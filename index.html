@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ultimon Blue</title>
+  <title>Ultimon</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -90,7 +90,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Ultimon Blue</h1>
+    <h1>Ultimon</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -586,7 +586,7 @@ function drawMonsterIcon(canvas,speciesId,variantName){
   const accentSat=Math.min(100,sat+12);
   const accentLight=Math.min(90,light+12);
 
-  // Seeded variation
+  // Seeded variation by species id
   const seed = s.id;
   const archetype = seed % 4;          // 0..3 body shapes
   const eyeStyle  = (seed >> 2) % 3;   // 0..2 eye layouts
@@ -639,7 +639,7 @@ function drawMonsterIcon(canvas,speciesId,variantName){
   ctx.lineWidth=size*0.035;
   ctx.stroke();
 
-  // --- TYPE-THEMED CREST / HORNS (layered on top) ---
+  // --- TYPE-THEMED CRESTS / HORNS ---
   ctx.beginPath();
   switch(s.type){
     case "Fire":
@@ -705,9 +705,8 @@ function drawMonsterIcon(canvas,speciesId,variantName){
   ctx.fillStyle=hsl(accentHue,accentSat,accentLight);
   ctx.fill();
 
-  // --- EXTRA BITS BASED ON SEED (spikes, frills, jaw plates) ---
+  // --- EXTRA BITS BASED ON SEED (spikes, jaw plates) ---
   if(extraBits===1){
-    // cheek spikes
     ctx.beginPath();
     ctx.moveTo(-r*0.95,0);
     ctx.lineTo(-r*1.15,0.1*r);
@@ -720,7 +719,6 @@ function drawMonsterIcon(canvas,speciesId,variantName){
     ctx.fillStyle=hsl(h,sat*0.9,light*0.6);
     ctx.fill();
   } else if(extraBits===2){
-    // jaw plates
     ctx.beginPath();
     ctx.moveTo(-r*0.5,r*0.6);
     ctx.quadraticCurveTo(-r*0.2,r*0.95,0,r*0.9);
@@ -730,20 +728,17 @@ function drawMonsterIcon(canvas,speciesId,variantName){
     ctx.fill();
   }
 
-  // --- EYES (varied by eyeStyle) ---
+  // --- EYES ---
   const baseEyeY=-size*0.02;
   const baseEyeX=size*0.11;
 
   ctx.beginPath();
   if(eyeStyle===0){
-    // classic two round eyes
     ctx.arc(-baseEyeX,baseEyeY,size*0.045,0,Math.PI*2);
     ctx.arc( baseEyeX,baseEyeY,size*0.045,0,Math.PI*2);
   } else if(eyeStyle===1){
-    // single central eye
     ctx.arc(0,baseEyeY,size*0.06,0,Math.PI*2);
   } else {
-    // three small eyes
     ctx.arc(-baseEyeX*0.7,baseEyeY,size*0.03,0,Math.PI*2);
     ctx.arc(0,baseEyeY,size*0.035,0,Math.PI*2);
     ctx.arc(baseEyeX*0.7,baseEyeY,size*0.03,0,Math.PI*2);
@@ -751,7 +746,6 @@ function drawMonsterIcon(canvas,speciesId,variantName){
   ctx.fillStyle=hsl(0,0,96);
   ctx.fill();
 
-  // Pupils
   ctx.beginPath();
   if(eyeStyle===0){
     ctx.arc(-baseEyeX,baseEyeY,size*0.02,0,Math.PI*2);
@@ -786,7 +780,6 @@ function drawMonsterIcon(canvas,speciesId,variantName){
 
   ctx.restore();
 }
-
 function refreshIcons(){
   var nodes=document.querySelectorAll("canvas.mon-icon,canvas.dex-icon");
   for(var i=0;i<nodes.length;i++){
@@ -1266,6 +1259,7 @@ function addExpToMonster(mon,amount){
     logMessage(getMonDisplayName(mon)+" is ready to evolve! Use the Evolve button in Party.");
   }
 }
+
 function playerUseMove(move){
   const playerMon=gameState.player.party[battle.playerIndex]; if(playerMon.hp<=0){ logMessage("Your active monster has fainted!"); return; }
   const enemy=battle.isTrainer?battle.trainerTeam[battle.trainerIndex]:battle.wild;
@@ -1355,15 +1349,15 @@ function endBattle(playerWon,grantExp=true){
         p.money += coinGain;
         logMessage("You earned " + coinGain + " coins for winning the battle.");
 
-        // Simple item drops
+        // Item drops: potions, basic orbs, XP chips
         const roll = Math.random();
-        if (roll < 0.15) {
+        if (roll < 0.35) {
           inv.potion++;
           logMessage("You found a Potion after the battle.");
-        } else if (roll < 0.22) {
+        } else if (roll < 0.60) {
           inv.orbBasic++;
           logMessage("You found a Basic Orb after the battle.");
-        } else if (roll < 0.25) {
+        } else if (roll < 0.70) {
           inv.xpChip++;
           logMessage("You received an XP Chip as a bonus reward!");
         }
@@ -1375,10 +1369,7 @@ function endBattle(playerWon,grantExp=true){
 
   // Heal party and clean up battle state
   gameState.player.party.forEach(function(m){ m.hp=getMaxHP(m); });
-  battle.active=false;
-  battle.wild=null;
-  battle.trainerTeam=[];
-  battle.participants=[];
+  battle.active=false; battle.wild=null; battle.trainerTeam=[]; battle.participants=[];
 
   renderBattle();
   renderStatus();
