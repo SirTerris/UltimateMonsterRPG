@@ -455,7 +455,16 @@ function logMessage(text){ const log=document.getElementById("log"); const div=d
 function getSpeciesById(id){return MONSTERS.find(m=>m.id===id);}
 function getSpecies(mon){return getSpeciesById(mon.speciesId);}
 function getVariant(mon){return VARIANTS[mon.variant||"Normal"]||VARIANTS.Normal;}
-function getActiveMonster(){ const idx=gameState?.player?.activeIndex||0; return gameState?.player?.party?.[idx]||null; }
+function getActiveMonster() {
+  if (!gameState || !gameState.player || !Array.isArray(gameState.player.party)) {
+    return null;
+  }
+  const idx = (typeof gameState.player.activeIndex === "number")
+    ? gameState.player.activeIndex
+    : 0;
+  return gameState.player.party[idx] || null;
+}
+
 
 function getMaxHP(mon){ const s=getSpecies(mon),v=getVariant(mon); const base=Math.round((s.baseHP+mon.level*4)*v.hpMult); return base + (mon.hpBonus||0); }
 function getAttack(mon){ const s=getSpecies(mon),v=getVariant(mon); const base=Math.round((s.baseAtk+mon.level*2)*v.atkMult); return base + (mon.atkBonus||0); }
@@ -1196,3 +1205,4 @@ document.getElementById("reset-btn").onclick=resetGame;
 document.getElementById("explore-btn").onclick=exploreWild;
 document.getElementById("trainer-btn").onclick=startTrainerBattle;
 document.getElementById("train-btn").onclick=train
+
