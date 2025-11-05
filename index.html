@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ultimon</title>
+  <title>Ultimon Red</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -90,7 +90,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Ultimon</h1>
+    <h1>Ultimon Red</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -1227,12 +1227,32 @@ function grantExpToParticipants(baseExp){
   if(baseExp<=0)return;
   const party=gameState.player.party;
   const uniqIndexes=[];
-  for(var i=0;i<battle.participants.length;i++){ var idx=battle.participants[i]; if(idx>=0 && idx<party.length && uniqIndexes.indexOf(idx)===-1) uniqIndexes.push(idx); }
+
+  if(Array.isArray(battle.participants)){
+    for(let i=0;i<battle.participants.length;i++){
+      const idx=battle.participants[i];
+      if(typeof idx==="number" && idx>=0 && idx<party.length && uniqIndexes.indexOf(idx)===-1){
+        uniqIndexes.push(idx);
+      }
+    }
+  }
+
+  // Fallback: if no participants recorded, give XP to current active monster
+  if(uniqIndexes.length===0 && battle.playerIndex>=0 && battle.playerIndex<party.length){
+    uniqIndexes.push(battle.playerIndex);
+  }
+
   if(uniqIndexes.length===0)return;
+
   const each=Math.max(1,Math.round(baseExp/uniqIndexes.length));
-  uniqIndexes.forEach(function(i){ const mon=party[i]; addExpToMonster(mon,each); });
+  uniqIndexes.forEach(function(i){
+    const mon=party[i];
+    if(mon) addExpToMonster(mon,each);
+  });
+
   addTrainerExp(Math.round(baseExp/4));
 }
+
 function addExpToMonster(mon,amount){
   if(amount<=0)return;
   if(mon.level>=100){ mon.level=100; mon.exp=0; return; }
@@ -1360,6 +1380,22 @@ function endBattle(playerWon,grantExp=true){
         } else if (roll < 0.70) {
           inv.xpChip++;
           logMessage("You received an XP Chip as a bonus reward!");
+        }
+
+        // Stat core drops (rare)
+        const coreRoll = Math.random();
+        if (coreRoll < 0.03) {
+          inv.hpCore++;
+          logMessage("You obtained an HP Core!");
+        } else if (coreRoll < 0.06) {
+          inv.atkCore++;
+          logMessage("You obtained an Attack Core!");
+        } else if (coreRoll < 0.09) {
+          inv.defCore++;
+          logMessage("You obtained a Defense Core!");
+        } else if (coreRoll < 0.12) {
+          inv.spdCore++;
+          logMessage("You obtained a Speed Core!");
         }
       }
     } catch (e) {
