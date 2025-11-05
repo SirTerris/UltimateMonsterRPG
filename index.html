@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ultimate Monster RPG (1.2)</title>
+  <title>Mini Monster RPG – Gigantic XP Edition (Trainer + Monster XP Numbers)</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -43,7 +43,7 @@
 
     .xp-bar { position:relative; background:#020617; border-radius:4px; height:8px; margin-top:2px; overflow:hidden; border:1px solid #1d4ed8; }
     .xp-bar-inner { height:100%; background:#3b82f6; }
-    .xp-bar-text { position:absolute; top:-12px; right:0; font-size:.7rem; color:#93c5fd; }
+    .xp-bar-text { margin-top:2px; font-size:0.75rem; color:#bfdbfe; text-align:center; position:static; }
 
     .battle-actions { display:flex; flex-wrap:wrap; gap:8px; }
     .moves { flex:2 1 260px; }
@@ -82,7 +82,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Ultimate Monster RPG (1.2)</h1>
+    <h1>Mini Monster RPG – Gigantic XP Edition (Trainer + Monster XP Numbers)</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -101,7 +101,7 @@
     <div class="xp-bar">
       <div id="trainer-xp-fill" class="xp-bar-inner" style="width:0%"></div>
     </div>
-    <div class="xp-bar-text" id="trainer-xp-text" style="position:static; margin-top:2px; font-size:0.75rem; color:#bfdbfe;">
+    <div class="xp-bar-text" id="trainer-xp-text" style="margin-top:2px; font-size:0.75rem; color:#bfdbfe;">
       Trainer XP: 0/0
     </div>
   </div>
@@ -121,7 +121,7 @@
   <section id="explore-section">
     <h2>Explore</h2>
     <p class="small-label">
-      This is a separate gigantic save: 4000 regular species × 20 variants, plus 10 legendaries for each of 18 types.
+      Gigantic save: 4000 regular species × 20 variants, plus 10 legendaries for each of 18 types.
       Only basic-stage monsters appear in the wild (plus ultra-rare legendaries).
       Higher rarity = much slower leveling (XP cost doubles each rarity rank).
     </p>
@@ -139,7 +139,7 @@
         <div class="xp-bar" style="margin-top:4px;">
           <div id="train-active-xpfill" class="xp-bar-inner" style="width:0%"></div>
         </div>
-        <small class="xp-bar-text" id="train-active-xptext"></small>
+        <div class="xp-bar-text" id="train-active-xptext"></div>
       </div>
     </div>
     <p class="small-label">
@@ -414,7 +414,7 @@ const LEGENDARY_IDS = [];
     MONSTERS.push({ id:id2,name:n2,type,stage:2, baseHP:s2.hp,baseAtk:s2.atk,baseDef:s2.def,baseSpd:s2.spd, catchRate:0.28,moves:buildMoves(2,type), evolvesTo:id3,evolveLevel:30+(idx%8) });
 
     const s3 = adjustByType({hp:baseHP1+40,atk:baseAtk1+16,def:baseDef1+16,spd:baseSpd1+12}, type);
-    MONSTERS.push({ id:id3,name:n3,type,stage:3, baseHP:s3.hp,baseAtk:s3.atk,baseDef:s3.def,baseSpd:s3.spd, catchRate:0.12,moves:buildMoves(3,type) });
+    MONSTERS.push({ id:id3,name:n3,type,stage:3, baseHP:s3.hp,baseAtk:s3.atk,baseDef:s3.spd,baseSpd:s3.spd, catchRate:0.12,moves:buildMoves(3,type) });
   }
 
   MONSTERS.push({ id:id++, name:"Omnimon", type:"Chaos", stage:3, baseHP:95,baseAtk:32,baseDef:28,baseSpd:28, catchRate:0.18, moves:["smash","chaosjolt","warpstrike","collapse"] });
@@ -874,7 +874,7 @@ function renderStorage(){
     const canvas=document.createElement("canvas"); canvas.className="mon-icon storage-icon"; canvas.dataset.speciesId=s.id; canvas.dataset.variant=mon.variant||"Normal"; inner.appendChild(canvas);
     const right=document.createElement("div");
     const hdr=document.createElement("div"); hdr.className="storage-mon-header";
-    hdr.innerHTML="<span>"+getMonDisplayName(mon)+(v.name!=="Normal"?(' <span class=\"variant-badge\">'+v.name+'</span>'):"")+"</span><span>Lv "+mon.level+" (#"+s.id+")</span>";
+    hdr.innerHTML="<span>"+getMonDisplayName(mon)+(v.name!=="Normal"?(' <span class=\\"variant-badge\\">'+v.name+'</span>'):"")+"</span><span>Lv "+mon.level+" (#"+s.id+")</span>";
     const sub=document.createElement("div"); sub.className="storage-mon-sub";
     sub.innerHTML="<span>Type: "+s.type+(s.isLegendary?" · <span class='ok'>Legendary</span>":"")+"</span><span>HP:"+mon.hp+"/"+getMaxHP(mon)+" Tot:"+getStatTotal(mon)+"</span>";
     const btns=document.createElement("div");
@@ -979,7 +979,7 @@ function renderBattle(){
   const eCanvas=document.createElement("canvas"); eCanvas.className="mon-icon battle-icon"; eCanvas.dataset.speciesId=enemy.speciesId; eCanvas.dataset.variant=enemy.variant||"Normal"; eInner.appendChild(eCanvas);
   const eRight=document.createElement("div");
   const alreadyHave = hasCurrentVariant(enemy.speciesId,enemy.variant||"Normal");
-  const caughtPill = "<span class=\"caught-pill "+(alreadyHave?"owned":"")+"\">"+(alreadyHave?"Already caught":"New variant")+"</span>";
+  const caughtPill = "<span class=\\"caught-pill "+(alreadyHave?"owned":"\\")+\\">"+(alreadyHave?"Already caught":"New variant")+"</span>";
   eRight.innerHTML="<h3>"+getMonDisplayName(enemy)+" "+((enemy.variant&&enemy.variant!=="Normal")?("<span class='variant-badge'>"+enemy.variant+"</span>"):"")+(enemySpecies.isLegendary?"<span class='legendary-tag'>Legendary</span>":"")+"</h3><div>Lv "+enemy.level+" ("+enemySpecies.type+")</div><div>"+caughtPill+"</div>";
   const eHp=document.createElement("div"); eHp.className="hp-bar";
   const eHpInner=document.createElement("div"); eHpInner.className="hp-bar-inner";
