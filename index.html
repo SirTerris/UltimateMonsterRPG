@@ -43,7 +43,7 @@
 
     .xp-bar { position:relative; background:#020617; border-radius:4px; height:8px; margin-top:2px; overflow:hidden; border:1px solid #1d4ed8; }
     .xp-bar-inner { height:100%; background:#3b82f6; }
-    \1
+    .xp-bar-text { position:absolute; top:-12px; right:0; font-size:.7rem; color:#93c5fd; }
 .mon-xp-text {
   position: static;
   margin-top: 2px;
@@ -481,7 +481,17 @@ function getSpeed(mon){ const s=getSpecies(mon),v=getVariant(mon); const base=Ma
 function getStatTotal(mon){ return getMaxHP(mon)+getAttack(mon)+getDefense(mon)+getSpeed(mon); }
 
 function getVariantExpMultiplier(variantName){ const v=VARIANTS[variantName]||VARIANTS.Normal; const r=v.rarityRank||1; return Math.pow(2,r-1); }
-function getNextLevelExp(level,variantName){ const base=25+level*18; const mult=getVariantExpMultiplier(variantName||"Normal"); return Math.round(base*mult); }
+function getNextLevelExp(level,variantName){
+  // Base experience curve
+  const base = 25 + level * level * 0.6;
+
+  // Variant multiplier – always at least 1 and finite
+  const rawMult = getVariantExpMultiplier(variantName || "Normal");
+  const mult = (!isFinite(rawMult) || rawMult <= 0) ? 1 : rawMult;
+
+  const v = Math.round(base * mult);
+  return (isFinite(v) && v > 0) ? v : 1;
+}
 function getTrainerNextLevelExp(level){ return 120+level*80; }
 
 function addTrainerExp(amount){
@@ -809,11 +819,11 @@ function renderParty(){
     sub.innerHTML="<span>HP: "+mon.hp+"/"+getMaxHP(mon)+"</span><span>Atk: "+getAttack(mon)+" Def: "+getDefense(mon)+" Spd: "+getSpeed(mon)+"</span>";
 
     const xpBar=document.createElement("div"); xpBar.className="xp-bar";
-const innerXp=document.createElement("div"); innerXp.className="xp-bar-inner";
-const next=getNextLevelExp(mon.level,mon.variant||"Normal"); const pct=Math.max(0,Math.min(100,(mon.exp/next)*100));
-innerXp.style.width=pct+"%";
-xpBar.appendChild(innerXp);
-const xpText=document.createElement("div"); xpText.className="mon-xp-text"; xpText.textContent="XP: "+mon.exp+"/"+next;
+    const innerXp=document.createElement("div"); innerXp.className="xp-bar-inner";
+    const next=getNextLevelExp(mon.level,mon.variant||"Normal"); const pct=Math.max(0,Math.min(100,(mon.exp/next)*100));
+    innerXp.style.width=pct+"%";
+    xpBar.appendChild(innerXp);
+    const xpText=document.createElement("div"); xpText.className="mon-xp-text"; xpText.textContent="XP: "+mon.exp+"/"+next;
 
     const hpBar=document.createElement("div"); hpBar.className="hp-bar";
     const hpInner=document.createElement("div"); hpInner.className="hp-bar-inner";
@@ -1042,12 +1052,26 @@ function addExpToMonster(mon,amount){
   if(mon.level>=100){ mon.level=100; mon.exp=0; return; }
   mon.exp+=amount;
   let leveled=false;
-  while(mon.level<100 && mon.exp>=getNextLevelExp(mon.level,mon.variant||"Normal")){
-    mon.exp-=getNextLevelExp(mon.level,mon.variant||"Normal");
-    mon.level++; leveled=true; logMessage(getMonDisplayName(mon)+" grew to level "+mon.level+"!");
+
+  // Safety guard to prevent infinite loops
+  let guard=0;
+  while(mon.level<100 && guard<200){
+    const needed = getNextLevelExp(mon.level,mon.variant||"Normal");
+    if(!isFinite(needed) || needed<=0) break;
+    if(mon.exp<needed) break;
+
+    mon.exp-=needed;
+    mon.level++;
+    leveled=true;
+    logMessage(getMonDisplayName(mon)+" grew to level "+mon.level+"!");
+
     if(mon.level>=100){ mon.level=100; mon.exp=0; break; }
+    guard++;
   }
-  if(leveled && canEvolve(mon)){ logMessage(getMonDisplayName(mon)+" is ready to evolve! Use the Evolve button in Party."); }
+
+  if(leveled && canEvolve(mon)){
+    logMessage(getMonDisplayName(mon)+" is ready to evolve! Use the Evolve button in Party.");
+  }
 }
 
 function playerUseMove(move){
@@ -1158,11 +1182,11 @@ function endBattle(playerWon,grantExp=true){
   }
 
   // Heal party and clean up battle state
-  gameState.player.party.forEach(function(m){ m.hp = getMaxHP(m); });
-  battle.active     = false;
-  battle.wild       = null;
-  battle.trainerTeam = [];
-  battle.participants = [];
+  gameState.player.party.forEach(function(m){ m.hp=getMaxHP(m); });
+  battle.active=false;
+  battle.wild=null;
+  battle.trainerTeam=[];
+  battle.participants=[];
 
   renderBattle();
   renderStatus();
@@ -1233,9 +1257,37 @@ function manualEvolve(mon){
   const s=getSpecies(mon);
   if(!s.evolvesTo){ logMessage("This monster cannot evolve further."); return; }
   if(mon.level<s.evolveLevel){ logMessage(getMonDisplayName(mon)+" is not high enough level to evolve."); return; }
+
   const target=getSpeciesById(s.evolvesTo);
-  mon.speciesId=target.id; ensureMonsterMoves(mon); mon.hp=getMaxHP(mon);
+
+  // Check if we already own this species elsewhere (party or storage), excluding this monster pre-evo
+  let alreadyOwned=false;
+  const p = gameState.player;
+  if (p && p.party) {
+    alreadyOwned = p.party.some(function(m){
+      return m!==mon && getSpecies(m).id===target.id;
+    });
+  }
+  if (!alreadyOwned && p && p.storage) {
+    alreadyOwned = p.storage.some(function(m){
+      return getSpecies(m).id===target.id;
+    });
+  }
+
+  // Perform evolution
+  mon.speciesId=target.id;
+  mon.exp = 0; // reset exp on evolution to avoid weird leftover thresholds
+  ensureMonsterMoves(mon);
+  mon.hp=getMaxHP(mon);
+
   logMessage(s.name+" evolved into "+target.name+"!");
+
+  if(alreadyOwned){
+    logMessage("You already have a "+target.name+" in your collection.");
+  } else {
+    logMessage("This is your first "+target.name+"!");
+  }
+
   saveGame();
   renderParty();
   renderDex();
