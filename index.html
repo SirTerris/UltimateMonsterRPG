@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mini Monster RPG – Gigantic XP Edition (Trainer XP Bar)</title>
+  <title>Ultimon</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -82,7 +82,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Mini Monster RPG – Gigantic XP Edition (Trainer XP Bar)</h1>
+    <h1>Ultimon</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -167,6 +167,15 @@
       <button onclick="setStorageSort('levelAsc')">Level ↑</button>
       <button onclick="setStorageSort('totalDesc')">Total Stats ↓</button>
       <button onclick="setStorageSort('totalAsc')">Total Stats ↑</button>
+      <br>
+      <button onclick="setStorageSort('hpDesc')">HP ↓</button>
+      <button onclick="setStorageSort('hpAsc')">HP ↑</button>
+      <button onclick="setStorageSort('atkDesc')">Atk ↓</button>
+      <button onclick="setStorageSort('atkAsc')">Atk ↑</button>
+      <button onclick="setStorageSort('defDesc')">Def ↓</button>
+      <button onclick="setStorageSort('defAsc')">Def ↑</button>
+      <button onclick="setStorageSort('spdDesc')">Spd ↓</button>
+      <button onclick="setStorageSort('spdAsc')">Spd ↑</button>
     </p>
     <div id="storage-list"></div>
   </section>
@@ -815,31 +824,51 @@ function renderParty(){
     hpBar.appendChild(hpInner); hpBar.appendChild(hpTxt);
 
     const btns=document.createElement("div");
-    const setActiveBtn=document.createElement("button");
-    setActiveBtn.textContent="Set Active";
-    setActiveBtn.onclick=function(){gameState.player.activeIndex=idx;saveGame();renderAll();};
-    btns.appendChild(setActiveBtn);
+const inv = gameState.inventory || {};
 
-    if(canEvolve(mon)){
-      const evoBtn=document.createElement("button");
-      evoBtn.textContent="Evolve";
-      evoBtn.onclick=function(){manualEvolve(mon);};
-      btns.appendChild(evoBtn);
-    }
+const setActiveBtn=document.createElement("button");
+setActiveBtn.textContent="Set Active";
+setActiveBtn.onclick=function(){gameState.player.activeIndex=idx;saveGame();renderAll();};
+btns.appendChild(setActiveBtn);
 
-    const toStorageBtn=document.createElement("button");
-    toStorageBtn.textContent="Send to Storage";
-    toStorageBtn.onclick=function(){moveToStorage(idx);};
-    btns.appendChild(toStorageBtn);
+if(canEvolve(mon)){
+  const evoBtn=document.createElement("button");
+  evoBtn.textContent="Evolve";
+  evoBtn.onclick=function(){manualEvolve(mon);};
+  btns.appendChild(evoBtn);
+}
 
-    const useHpCore=document.createElement("button"); useHpCore.textContent="Use HP Core"; useHpCore.onclick=function(){useStatItem(mon,"hpCore");}; btns.appendChild(useHpCore);
-    const useAtkCore=document.createElement("button"); useAtkCore.textContent="Use Atk Core"; useAtkCore.onclick=function(){useStatItem(mon,"atkCore");}; btns.appendChild(useAtkCore);
-    const useDefCore=document.createElement("button"); useDefCore.textContent="Use Def Core"; useDefCore.onclick=function(){useStatItem(mon,"defCore");}; btns.appendChild(useDefCore);
-    const useSpdCore=document.createElement("button"); useSpdCore.textContent="Use Spd Core"; useSpdCore.onclick=function(){useStatItem(mon,"spdCore");}; btns.appendChild(useSpdCore);
+const toStorageBtn=document.createElement("button");
+toStorageBtn.textContent="Send to Storage";
+toStorageBtn.onclick=function(){moveToStorage(idx);};
+btns.appendChild(toStorageBtn);
 
-    const useXpChip=document.createElement("button"); useXpChip.textContent="Use XP Chip"; useXpChip.onclick=function(){useXpChipOn(mon);}; btns.appendChild(useXpChip);
+const useHpCore=document.createElement("button");
+useHpCore.textContent="Use HP Core (" + (inv.hpCore || 0) + ")";
+useHpCore.onclick=function(){useStatItem(mon,"hpCore");};
+btns.appendChild(useHpCore);
 
-    right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(btns);
+const useAtkCore=document.createElement("button");
+useAtkCore.textContent="Use Atk Core (" + (inv.atkCore || 0) + ")";
+useAtkCore.onclick=function(){useStatItem(mon,"atkCore");};
+btns.appendChild(useAtkCore);
+
+const useDefCore=document.createElement("button");
+useDefCore.textContent="Use Def Core (" + (inv.defCore || 0) + ")";
+useDefCore.onclick=function(){useStatItem(mon,"defCore");};
+btns.appendChild(useDefCore);
+
+const useSpdCore=document.createElement("button");
+useSpdCore.textContent="Use Spd Core (" + (inv.spdCore || 0) + ")";
+useSpdCore.onclick=function(){useStatItem(mon,"spdCore");};
+btns.appendChild(useSpdCore);
+
+const useXpChip=document.createElement("button");
+useXpChip.textContent="Use XP Chip (" + (inv.xpChip || 0) + ")";
+useXpChip.onclick=function(){useXpChipOn(mon);};
+btns.appendChild(useXpChip);
+
+right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
   refreshIcons();
@@ -872,9 +901,31 @@ function renderStorage(){
   const cont=document.getElementById("storage-list"); cont.innerHTML="";
   const storage=gameState.player.storage.slice(); const dexId=function(m){return getSpecies(m).id;};
   storage.sort(function(a,b){
-    const sa=dexId(a),sb=dexId(b); const la=a.level,lb=b.level; const ta=getStatTotal(a),tb=getStatTotal(b);
-    switch(storageSortMode){ case "levelDesc":return lb-la||sa-sb; case "levelAsc":return la-lb||sa-sb; case "totalDesc":return tb-ta||sa-sb; case "totalAsc":return ta-tb||sa-sb; case "dex": default:return sa-sb; }
-  });
+  const sa=dexId(a),sb=dexId(b);
+  const la=a.level,lb=b.level;
+  const ta=getStatTotal(a),tb=getStatTotal(b);
+  const ha=getMaxHP(a),hb=getMaxHP(b);
+  const aa=getAttack(a),ab=getAttack(b);
+  const da=getDefense(a),db=getDefense(b);
+  const spa=getSpeed(a),spb=getSpeed(b);
+  switch(storageSortMode){
+    case "levelDesc": return lb-la || sa-sb;
+    case "levelAsc":  return la-lb || sa-sb;
+    case "totalDesc": return tb-ta || sa-sb;
+    case "totalAsc":  return ta-tb || sa-sb;
+    case "hpDesc":    return hb-ha || sa-sb;
+    case "hpAsc":     return ha-hb || sa-sb;
+    case "atkDesc":   return ab-aa || sa-sb;
+    case "atkAsc":    return aa-ab || sa-sb;
+    case "defDesc":   return db-da || sa-sb;
+    case "defAsc":    return da-db || sa-sb;
+    case "spdDesc":   return spb-spa || sa-sb;
+    case "spdAsc":    return spa-spb || sa-sb;
+    case "dex":
+    default:          return sa-sb;
+  }
+});
+;
   if(storage.length===0){ cont.textContent="No monsters in storage."; return; }
   storage.forEach(function(mon,idx){
     const s=getSpecies(mon),v=getVariant(mon);
@@ -887,37 +938,39 @@ function renderStorage(){
     const sub=document.createElement("div"); sub.className="storage-mon-sub";
     sub.innerHTML="<span>Type: "+s.type+(s.isLegendary?" · <span class='ok'>Legendary</span>":"")+"</span><span>HP:"+mon.hp+"/"+getMaxHP(mon)+" Tot:"+getStatTotal(mon)+"</span>";
     const btns=document.createElement("div");
-    const toParty=document.createElement("button");
+const inv = gameState.inventory || {};
+
+const toParty=document.createElement("button");
 toParty.textContent="Add to Party";
 toParty.onclick=function(){ moveToParty(mon); };
 btns.appendChild(toParty);
 
 const useHpCore=document.createElement("button");
-useHpCore.textContent="Use HP Core";
+useHpCore.textContent="Use HP Core (" + (inv.hpCore || 0) + ")";
 useHpCore.onclick=function(){ useStatItem(mon,"hpCore"); };
 btns.appendChild(useHpCore);
 
 const useAtkCore=document.createElement("button");
-useAtkCore.textContent="Use Atk Core";
+useAtkCore.textContent="Use Atk Core (" + (inv.atkCore || 0) + ")";
 useAtkCore.onclick=function(){ useStatItem(mon,"atkCore"); };
 btns.appendChild(useAtkCore);
 
 const useDefCore=document.createElement("button");
-useDefCore.textContent="Use Def Core";
+useDefCore.textContent="Use Def Core (" + (inv.defCore || 0) + ")";
 useDefCore.onclick=function(){ useStatItem(mon,"defCore"); };
 btns.appendChild(useDefCore);
 
 const useSpdCore=document.createElement("button");
-useSpdCore.textContent="Use Spd Core";
+useSpdCore.textContent="Use Spd Core (" + (inv.spdCore || 0) + ")";
 useSpdCore.onclick=function(){ useStatItem(mon,"spdCore"); };
 btns.appendChild(useSpdCore);
 
 const useXpChip=document.createElement("button");
-useXpChip.textContent="Use XP Chip";
+useXpChip.textContent="Use XP Chip (" + (inv.xpChip || 0) + ")";
 useXpChip.onclick=function(){ useXpChipOn(mon); };
 btns.appendChild(useXpChip);
 
-    right.appendChild(hdr); right.appendChild(sub); right.appendChild(btns);
+right.appendChild(hdr); right.appendChild(sub); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
   refreshIcons();
