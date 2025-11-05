@@ -419,7 +419,7 @@
     <h2>Dex</h2>
     <p class="small-label" id="dex-summary"></p>
     <p class="small-label">
-      Dex only tracks species & variants you currently own (party + storage). Legendaries are highlighted.
+      Dex shows every species in the game. Variants listed are only ones you currently own (party + storage). Legendaries are highlighted.
     </p>
     <div id="dex-list"></div>
   </section>
@@ -1396,70 +1396,90 @@ function renderStorage(){
 }
 
 function renderDex(){
-  const cont=document.getElementById("dex-list");
-  cont.innerHTML="";
-  const dexSnapshot=buildCurrentDexSnapshot();
-  const speciesIds=Object.keys(dexSnapshot).map(x=>parseInt(x,10)).sort((a,b)=>a-b);
-  const totalOwnedSpecies=speciesIds.length;
-  let totalOwnedVariants=0;
-  speciesIds.forEach(id=>{
-    const variants=dexSnapshot[id];
-    for(const k in variants) totalOwnedVariants+=variants[k].owned;
-  });
-  document.getElementById("dex-summary").textContent=
-    `Owned species: ${totalOwnedSpecies} · Owned variants (counted copies): ${totalOwnedVariants}`;
+  const cont = document.getElementById("dex-list");
+  cont.innerHTML = "";
 
-  if(speciesIds.length===0){
-    cont.textContent="You don't own any monsters yet.";
+  const dexSnapshot = buildCurrentDexSnapshot();
+
+  // all species in the game, sorted by dex id
+  const allSpecies = [...MONSTERS].sort((a, b) => a.id - b.id);
+
+  const ownedSpeciesCount = allSpecies.filter(s => dexSnapshot[s.id]).length;
+
+  let ownedVariantCopies = 0;
+  for (const sid in dexSnapshot) {
+    const variants = dexSnapshot[sid];
+    for (const vKey in variants) {
+      ownedVariantCopies += variants[vKey].owned;
+    }
+  }
+
+  document.getElementById("dex-summary").textContent =
+    `Species owned: ${ownedSpeciesCount}/${allSpecies.length} · Owned variants (copies): ${ownedVariantCopies}`;
+
+  if (allSpecies.length === 0) {
+    cont.textContent = "No species defined (something is wrong).";
     return;
   }
-  speciesIds.forEach(id=>{
-    const s=getSpeciesById(id);
-    const entry=document.createElement("div");
-    entry.className="dex-entry";
 
-    const hdr=document.createElement("div");
-    hdr.className="dex-header-line";
+  allSpecies.forEach(s => {
+    const entry = document.createElement("div");
+    entry.className = "dex-entry";
 
-    const left=document.createElement("div");
-    left.className="dex-header-left";
+    const hdr = document.createElement("div");
+    hdr.className = "dex-header-line";
 
-    const canvas=document.createElement("canvas");
-    canvas.className="dex-icon";
-    canvas.dataset.speciesId=s.id;
-    canvas.dataset.variant="Normal";
+    const left = document.createElement("div");
+    left.className = "dex-header-left";
+
+    const canvas = document.createElement("canvas");
+    canvas.className = "dex-icon";
+    canvas.dataset.speciesId = s.id;
+    canvas.dataset.variant = "Normal";
     left.appendChild(canvas);
 
-    const nameSpan=document.createElement("span");
-    nameSpan.textContent=`#${s.id} ${s.name} (${s.type})`;
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = `#${s.id} ${s.name} (${s.type})`;
     left.appendChild(nameSpan);
 
     hdr.appendChild(left);
 
-    const right=document.createElement("div");
-    if(s.isLegendary){
-      const tag=document.createElement("span");
-      tag.className="legendary-tag";
-      tag.textContent="Legendary";
+    const right = document.createElement("div");
+    if (s.isLegendary) {
+      const tag = document.createElement("span");
+      tag.className = "legendary-tag";
+      tag.textContent = "Legendary";
       right.appendChild(tag);
     }
     hdr.appendChild(right);
+
     entry.appendChild(hdr);
 
-    const varRow=document.createElement("div");
-    varRow.className="dex-variants";
-    const ownedVariants=dexSnapshot[id];
-    VARIANT_KEYS.forEach(key=>{
-      if(!ownedVariants[key])return; // only show variants you actually have
-      const vInfo=VARIANTS[key];
-      const pill=document.createElement("span");
-      pill.className="dex-variant owned";
-      pill.textContent=`${vInfo.name} x${ownedVariants[key].owned}`;
+    const varRow = document.createElement("div");
+    varRow.className = "dex-variants";
+
+    const ownedVariants = dexSnapshot[s.id];
+
+    if (ownedVariants) {
+      Object.keys(ownedVariants).forEach(key => {
+        const vInfo = VARIANTS[key] || { name: key };
+        const pill = document.createElement("span");
+        pill.className = "dex-variant owned";
+        pill.textContent = `${vInfo.name} x${ownedVariants[key].owned}`;
+        varRow.appendChild(pill);
+      });
+    } else {
+      const pill = document.createElement("span");
+      pill.className = "dex-variant";
+      pill.textContent = "No variants owned yet";
       varRow.appendChild(pill);
-    });
+    }
+
     entry.appendChild(varRow);
     cont.appendChild(entry);
   });
+
+  refreshIcons();
 }
 
 /* ======================== BATTLE SYSTEM ======================== */
@@ -2058,16 +2078,21 @@ function manualEvolve(mon){
 /* ======================== NAVIGATION & RENDER ALL ======================== */
 
 function showSection(name){
-  currentSection=name;
+  currentSection = name;
+
   ["explore","train","party","storage","bag","shop","dex"].forEach(id=>{
-    document.getElementById(id+"-section").style.display=(id===name)?"block":"none";
+    document.getElementById(id + "-section").style.display = (id === name) ? "block" : "none";
   });
+
   document.querySelectorAll("#nav button").forEach(btn=>{
-    btn.classList.toggle("active",btn.dataset.section===name);
+    btn.classList.toggle("active", btn.dataset.section === name);
   });
-  if(name==="party")renderParty();
-  if(name==="storage")renderStorage();
-  if(name==="dex")renderDex();
+
+  if (name === "party")   renderParty();
+  if (name === "storage") renderStorage();
+  if (name === "dex")     renderDex();
+
+  refreshIcons();
 }
 
 function renderAll(){
