@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ultimon Beta</title>
+  <title>Ultimon</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -90,7 +90,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Ultimon Beta</h1>
+    <h1>Ultimon</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -567,42 +567,166 @@ function getVariantColorAdjust(variantName){
   }
 }
 function drawMonsterIcon(canvas,speciesId,variantName){
-  const s=getSpeciesById(speciesId); if(!s||!canvas)return;
-  const vName=variantName||"Normal"; const ctx=canvas.getContext("2d");
-  const size=Math.min(canvas.width,canvas.height); const cx=size/2,cy=size/2;
+  const s=getSpeciesById(speciesId);
+  if(!s||!canvas)return;
+  const vName=variantName||"Normal";
+  const ctx=canvas.getContext("2d");
+  const size=Math.min(canvas.width,canvas.height);
+  const cx=size/2,cy=size/2;
+
   ctx.clearRect(0,0,size,size);
-  const baseHue=getTypeBaseHue(s.type); const adj=getVariantColorAdjust(vName);
-  var h=(baseHue+adj.hueShift+360)%360; var sat=Math.min(100,Math.max(10,70*adj.sat)); var light=Math.min(90,Math.max(15,55*adj.light));
-  const seed=s.id; const shapeType=seed%4; const spikes=3+((seed>>2)%5); const rot=((seed*37)%360)*Math.PI/180/4;
 
-  ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot);
-  ctx.beginPath(); ctx.arc(0,0,size*0.46,0,Math.PI*2); ctx.fillStyle=hsl(h,sat*0.3,light*0.4); ctx.fill();
+  const baseHue=getTypeBaseHue(s.type);
+  const adj=getVariantColorAdjust(vName);
+  let h=(baseHue+adj.hueShift+360)%360;
+  let sat=Math.min(100,Math.max(25,65*adj.sat));
+  let light=Math.min(85,Math.max(20,55*adj.light));
 
+  // Accent colour derived from main hue
+  const accentHue=(h+20)%360;
+  const accentSat=Math.min(100,sat+15);
+  const accentLight=Math.min(90,light+15);
+
+  ctx.save();
+  ctx.translate(cx,cy);
+
+  const r=size*0.32;
+
+  // --- MAIN SILHOUETTE (monster head/upper body) ---
   ctx.beginPath();
-  switch(shapeType){
-    case 0: ctx.arc(0,0,size*0.28,0,Math.PI*2); break;
-    case 1: ctx.moveTo(0,-size*0.32); ctx.lineTo(size*0.26,0); ctx.lineTo(0,size*0.32); ctx.lineTo(-size*0.26,0); ctx.closePath(); break;
-    case 2: ctx.moveTo(0,-size*0.34); ctx.lineTo(size*0.30,size*0.2); ctx.lineTo(-size*0.30,size*0.2); ctx.closePath(); break;
-    case 3: const r=size*0.28; ctx.moveTo(-r,-r*0.6); ctx.lineTo(r,-r*0.6); ctx.quadraticCurveTo(r*1.1,0,r,r*0.6); ctx.lineTo(-r,r*0.6); ctx.quadraticCurveTo(-r*1.1,0,-r,-r*0.6); ctx.closePath(); break;
+  ctx.moveTo(-r*0.75, r*0.25);
+  ctx.quadraticCurveTo(-r*1.0, -r*0.15, -r*0.35, -r*0.85);  // left skull
+  ctx.quadraticCurveTo(0, -r*1.05, r*0.35, -r*0.85);        // top
+  ctx.quadraticCurveTo(r*1.0, -r*0.15, r*0.75, r*0.25);     // right skull
+  ctx.quadraticCurveTo(0, r*1.0, -r*0.75, r*0.25);          // jaw line
+  ctx.closePath();
+  ctx.fillStyle=hsl(h,sat,light);
+  ctx.fill();
+
+  // Subtle outline
+  ctx.strokeStyle=hsl(h,sat*0.6,light*0.5);
+  ctx.lineWidth=size*0.035;
+  ctx.stroke();
+
+  // --- TYPE-THEMED CRESTS / HORNS ---
+  ctx.beginPath();
+  switch(s.type){
+    case "Fire":
+      // twin flame horns
+      ctx.moveTo(-r*0.35,-r*0.7);
+      ctx.quadraticCurveTo(-r*0.6,-r*1.1,-r*0.15,-r*1.1);
+      ctx.quadraticCurveTo(-r*0.45,-r*0.8,-r*0.35,-r*0.7);
+      ctx.moveTo(r*0.35,-r*0.7);
+      ctx.quadraticCurveTo(r*0.6,-r*1.1,r*0.15,-r*1.1);
+      ctx.quadraticCurveTo(r*0.45,-r*0.8,r*0.35,-r*0.7);
+      break;
+    case "Water":
+      // fin crest
+      ctx.moveTo(0,-r*0.9);
+      ctx.quadraticCurveTo(r*0.55,-r*1.05,0,-r*1.25);
+      ctx.quadraticCurveTo(-r*0.55,-r*1.05,0,-r*0.9);
+      break;
+    case "Electric":
+      // lightning zigzag
+      ctx.moveTo(-r*0.15,-r*0.9);
+      ctx.lineTo(0,-r*1.15);
+      ctx.lineTo(r*0.12,-r*0.95);
+      ctx.lineTo(-r*0.02,-r*0.75);
+      ctx.closePath();
+      break;
+    case "Nature":
+    case "Earth":
+      // leaf ears
+      ctx.moveTo(-r*0.7,-r*0.2);
+      ctx.quadraticCurveTo(-r*1.1,-r*0.55,-r*0.6,-r*0.8);
+      ctx.quadraticCurveTo(-r*0.45,-r*0.4,-r*0.7,-r*0.2);
+      ctx.moveTo(r*0.7,-r*0.2);
+      ctx.quadraticCurveTo(r*1.1,-r*0.55,r*0.6,-r*0.8);
+      ctx.quadraticCurveTo(r*0.45,-r*0.4,r*0.7,-r*0.2);
+      break;
+    case "Ice":
+      // crystal crown
+      ctx.moveTo(-r*0.4,-r*0.8);
+      ctx.lineTo(-r*0.2,-r*1.2);
+      ctx.lineTo(0,-r*0.85);
+      ctx.lineTo(r*0.2,-r*1.2);
+      ctx.lineTo(r*0.4,-r*0.8);
+      break;
+    case "Psychic":
+      // floating gem above head
+      ctx.moveTo(-r*0.18,-r*1.05);
+      ctx.lineTo(0,-r*1.25);
+      ctx.lineTo(r*0.18,-r*1.05);
+      ctx.lineTo(0,-r*0.9);
+      break;
+    case "Dark":
+    case "Shadow":
+      // swept-back horns
+      ctx.moveTo(-r*0.55,-r*0.6);
+      ctx.quadraticCurveTo(-r*0.95,-r*0.9,-r*0.4,-r*1.0);
+      ctx.quadraticCurveTo(-r*0.4,-r*0.75,-r*0.55,-r*0.6);
+      ctx.moveTo(r*0.55,-r*0.6);
+      ctx.quadraticCurveTo(r*0.95,-r*0.9,r*0.4,-r*1.0);
+      ctx.quadraticCurveTo(r*0.4,-r*0.75,r*0.55,-r*0.6);
+      break;
+    default:
+      // small generic horns
+      ctx.moveTo(-r*0.45,-r*0.7);
+      ctx.quadraticCurveTo(-r*0.55,-r*0.95,-r*0.2,-r*0.95);
+      ctx.quadraticCurveTo(-r*0.35,-r*0.75,-r*0.45,-r*0.7);
+      ctx.moveTo(r*0.45,-r*0.7);
+      ctx.quadraticCurveTo(r*0.55,-r*0.95,r*0.2,-r*0.95);
+      ctx.quadraticCurveTo(r*0.35,-r*0.75,r*0.45,-r*0.7);
+      break;
   }
-  ctx.fillStyle=hsl(h,sat,light); ctx.fill();
+  ctx.fillStyle=hsl(accentHue,accentSat,accentLight);
+  ctx.fill();
 
+  // --- EYES ---
+  const eyeOffsetX=size*0.11;
+  const eyeY=-size*0.02;
   ctx.beginPath();
-  const inner=size*0.30; const outer=size*(0.34+((seed%7)/100));
-  for(let i=0;i<spikes;i++){ const a=i*(Math.PI*2/spikes); const x1=Math.cos(a)*inner,y1=Math.sin(a)*inner; const x2=Math.cos(a)*outer,y2=Math.sin(a)*outer; ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); }
-  ctx.strokeStyle=hsl(h,sat*0.9,light*1.05); ctx.lineWidth=size*0.04; ctx.stroke();
+  if(["Dark","Shadow","Void","Phantom"].includes(vName) || s.type==="Dark"){
+    // slit eyes
+    ctx.ellipse(-eyeOffsetX,eyeY,size*0.05,size*0.02,0,0,Math.PI*2);
+    ctx.ellipse( eyeOffsetX,eyeY,size*0.05,size*0.02,0,0,Math.PI*2);
+  }else{
+    // round eyes
+    ctx.arc(-eyeOffsetX,eyeY,size*0.04,0,Math.PI*2);
+    ctx.arc( eyeOffsetX,eyeY,size*0.04,0,Math.PI*2);
+  }
+  ctx.fillStyle=hsl(0,0,96);
+  ctx.fill();
 
+  // Pupils
+  ctx.beginPath();
+  ctx.arc(-eyeOffsetX,eyeY,size*0.02,0,Math.PI*2);
+  ctx.arc( eyeOffsetX,eyeY,size*0.02,0,Math.PI*2);
+  ctx.fillStyle=hsl(0,0,10);
+  ctx.fill();
+
+  // --- VARIANT CORE / GEM ---
   if(vName!=="Normal"){
-    ctx.beginPath(); ctx.arc(0,0,size*0.18,0,Math.PI*2);
-    var inHue=h,inSat=sat,inLight=light;
+    ctx.beginPath();
+    ctx.arc(0,size*0.12,size*0.09,0,Math.PI*2);
+    let inHue=h, inSat=sat, inLight=light;
     if(["Shiny","Gilded","Divine","Prismatic","Mythic"].includes(vName)){ inHue=50;inSat=90;inLight=80; }
-    else if(["Dark","Shadow","Void","Phantom"].includes(vName)){ inLight=25; }
+    else if(["Dark","Shadow","Void","Phantom"].includes(vName)){ inLight=22; }
     else if(vName==="Cosmic"){ inHue=220;inSat=80;inLight=70; }
     else if(vName==="Aurora"){ inHue=190;inSat=90;inLight=80; }
-    ctx.fillStyle=hsl(inHue,inSat,inLight); ctx.fill();
+    ctx.fillStyle=hsl(inHue,inSat,inLight);
+    ctx.fill();
+
+    // little highlight
+    ctx.beginPath();
+    ctx.arc(-size*0.02,size*0.09,size*0.02,0,Math.PI*2);
+    ctx.fillStyle="rgba(255,255,255,0.7)";
+    ctx.fill();
   }
+
   ctx.restore();
 }
+
 function refreshIcons(){
   var nodes=document.querySelectorAll("canvas.mon-icon,canvas.dex-icon");
   for(var i=0;i<nodes.length;i++){
