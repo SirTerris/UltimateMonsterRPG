@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ultimate Monster RPG</title>
+  <title>Ultimon</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -44,14 +44,13 @@
     .xp-bar { position:relative; background:#020617; border-radius:4px; height:8px; margin-top:2px; overflow:hidden; border:1px solid #1d4ed8; }
     .xp-bar-inner { height:100%; background:#3b82f6; }
     .xp-bar-text { position:absolute; top:-12px; right:0; font-size:.7rem; color:#93c5fd; }
-.mon-xp-text {
-  position: static;
-  margin-top: 2px;
-  font-size: 0.75rem;
-  color: #bfdbfe;
-  text-align: right;
-}
-
+    .mon-xp-text {
+      position: static;
+      margin-top: 2px;
+      font-size: 0.75rem;
+      color: #bfdbfe;
+      text-align: right;
+    }
 
     .battle-actions { display:flex; flex-wrap:wrap; gap:8px; }
     .moves { flex:2 1 260px; }
@@ -90,7 +89,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Ultimate Monster RPG</h1>
+    <h1>Ultimon</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -870,12 +869,23 @@ function moveToStorage(idx){
   if(gameState.player.activeIndex>=party.length)gameState.player.activeIndex=party.length-1;
   saveGame(); renderAll();
 }
-function moveToParty(index){
+function moveToParty(monToMove){
   const storage=gameState.player.storage;
   if(gameState.player.party.length>=6){ logMessage("Party is full."); return; }
-  const arr=storage.splice(index,1); const mon=arr[0]; gameState.player.party.push(mon);
-  saveGame(); renderAll();
+
+  const index = storage.findIndex(function(m){ return m===monToMove; });
+  if(index===-1){
+    logMessage("Monster not found in storage.");
+    return;
+  }
+
+  const arr=storage.splice(index,1);
+  const mon=arr[0];
+  gameState.player.party.push(mon);
+  saveGame();
+  renderAll();
 }
+
 function setStorageSort(mode){ storageSortMode=mode; renderStorage(); }
 function renderStorage(){
   const cont=document.getElementById("storage-list"); cont.innerHTML="";
@@ -896,7 +906,7 @@ function renderStorage(){
     const sub=document.createElement("div"); sub.className="storage-mon-sub";
     sub.innerHTML="<span>Type: "+s.type+(s.isLegendary?" · <span class='ok'>Legendary</span>":"")+"</span><span>HP:"+mon.hp+"/"+getMaxHP(mon)+" Tot:"+getStatTotal(mon)+"</span>";
     const btns=document.createElement("div");
-    const toParty=document.createElement("button"); toParty.textContent="Add to Party"; toParty.onclick=function(){ moveToParty(idx); }; btns.appendChild(toParty);
+    const toParty=document.createElement("button"); toParty.textContent="Add to Party"; toParty.onclick=function(){ moveToParty(mon); }; btns.appendChild(toParty);
     right.appendChild(hdr); right.appendChild(sub); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
@@ -1073,6 +1083,15 @@ function addExpToMonster(mon,amount){
     logMessage(getMonDisplayName(mon)+" is ready to evolve! Use the Evolve button in Party.");
   }
 }
+mon.exp+=amount;
+  let leveled=false;
+  while(mon.level<100 && mon.exp>=getNextLevelExp(mon.level,mon.variant||"Normal")){
+    mon.exp-=getNextLevelExp(mon.level,mon.variant||"Normal");
+    mon.level++; leveled=true; logMessage(getMonDisplayName(mon)+" grew to level "+mon.level+"!");
+    if(mon.level>=100){ mon.level=100; mon.exp=0; break; }
+  }
+  if(leveled && canEvolve(mon)){ logMessage(getMonDisplayName(mon)+" is ready to evolve! Use the Evolve button in Party."); }
+}
 
 function playerUseMove(move){
   const playerMon=gameState.player.party[battle.playerIndex]; if(playerMon.hp<=0){ logMessage("Your active monster has fainted!"); return; }
@@ -1196,6 +1215,7 @@ function endBattle(playerWon,grantExp=true){
   saveGame();
 }
 
+
 function exploreWild(){
   const roll=Math.random(); if(roll<0.03){ startLegendaryEncounter(); } else { startWildEncounter(); }
 }
@@ -1294,6 +1314,7 @@ function manualEvolve(mon){
   renderTrain();
   refreshIcons();
 }
+
 
 function showSection(name){
   currentSection = name;
