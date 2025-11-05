@@ -12,8 +12,11 @@
     header button, .import-label { padding:4px 8px; border-radius:6px; border:none; background:#1f2937; color:#e5e7eb; cursor:pointer; font-size:.8rem; }
     #reset-btn { background:#b91c1c; color:#fee2e2; }
     .import-label { display:inline-block; }
-    #status-bar { font-size:.85rem; margin-bottom:6px; }
+    #status-bar { font-size:.85rem; margin-bottom:2px; }
     #status-bar span { margin-right:10px; }
+
+    #trainer-xp-container { margin: -2px 0 6px 0; }
+    #trainer-xp-container .xp-bar { height:6px; margin-top:2px; max-width:260px; }
 
     #nav { margin-bottom:8px; }
     #nav button { margin-right:6px; margin-bottom:4px; padding:5px 9px; border-radius:6px; border:none; background:#1f2937; color:#e5e7eb; cursor:pointer; font-size:.85rem; }
@@ -53,7 +56,6 @@
     .caught-pill { display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:999px; font-size:.75rem; border:1px solid #374151; background:#020617; }
     .caught-pill.owned { border-color:#22c55e; color:#bbf7d0; }
 
-    /* Icon sizing */
     canvas.mon-icon { display:block; }
     canvas.dex-icon { display:block; width:40px; height:40px; }
 
@@ -95,6 +97,14 @@
     <span id="status-potions"></span>
     <span id="status-trainer"></span>
   </div>
+  <div id="trainer-xp-container">
+    <div class="xp-bar">
+      <div id="trainer-xp-fill" class="xp-bar-inner" style="width:0%"></div>
+    </div>
+    <div class="xp-bar-text" id="trainer-xp-text" style="position:static; margin-top:2px; font-size:0.75rem; color:#bfdbfe;">
+      Trainer XP: 0/0
+    </div>
+  </div>
 
   <div id="battle-section"></div>
 
@@ -122,7 +132,7 @@
   <section id="train-section" style="display:none;">
     <h2>Training Ground</h2>
     <div id="train-active-info" class="train-active-box">
-      <canvas id="train-active-icon" class="mon-icon" width="48" height="48"></canvas>
+      <canvas id="train-active-icon" class="mon-icon party-icon" width="48" height="48"></canvas>
       <div>
         <div class="name-row"><span id="train-active-name"></span></div>
         <div>Lv <span id="train-active-level"></span></div>
@@ -204,8 +214,6 @@
 <script>
 const STORAGE_KEY = "miniMonsterRPG_gigantic_xp";
 
-/* ======================== VARIANTS & MOVES ======================== */
-
 const VARIANTS = {
   Normal:{name:"Normal",encounterWeight:1000,hpMult:1,atkMult:1,defMult:1,spdMult:1,prefix:"",emoji:"",rarityRank:1},
   Shiny:{name:"Shiny",encounterWeight:180,hpMult:1.05,atkMult:1.05,defMult:1.05,spdMult:1.05,prefix:"★ ",emoji:"✨",rarityRank:2},
@@ -230,7 +238,6 @@ const VARIANTS = {
 };
 const VARIANT_KEYS = Object.keys(VARIANTS);
 
-/* Moves / Type move sets */
 const MOVES = {
   tackle:{id:"tackle",name:"Tackle",power:40,accuracy:0.95},
   strike:{id:"strike",name:"Strike",power:45,accuracy:0.95},
@@ -306,8 +313,6 @@ const TYPE_MOVE_SETS = {
   Bug:["stinger","swarmstrike","husksmash"], Poison:["venomshot","sludgewhip","acidburst"], Sand:["sandkick","duneslam","sandstorm"],
   CrystalType:["shardbeam","prismedge","facetstorm"], Chaos:["chaosjolt","warpstrike","collapse"]
 };
-
-/* ======================== MONSTER GENERATION ======================== */
 
 const MONSTERS = [];
 const LEGENDARY_IDS = [];
@@ -446,8 +451,6 @@ const LEGENDARY_IDS = [];
   }
 })();
 
-/* ======================== UTILS & STATS ======================== */
-
 function randomChoice(arr){return arr[Math.floor(Math.random()*arr.length)];}
 function logMessage(text){ const log=document.getElementById("log"); const div=document.createElement("div"); div.className="log-line"; div.textContent=text; log.appendChild(div); log.scrollTop=log.scrollHeight; }
 
@@ -455,7 +458,6 @@ function getSpeciesById(id){return MONSTERS.find(m=>m.id===id);}
 function getSpecies(mon){return getSpeciesById(mon.speciesId);}
 function getVariant(mon){return VARIANTS[mon.variant||"Normal"]||VARIANTS.Normal;}
 
-/* ✅ Safe active monster getter */
 function getActiveMonster() {
   if (!gameState || !gameState.player || !Array.isArray(gameState.player.party)) {
     return null;
@@ -470,12 +472,10 @@ function getDefense(mon){ const s=getSpecies(mon),v=getVariant(mon); const base=
 function getSpeed(mon){ const s=getSpecies(mon),v=getVariant(mon); const base=Math.round((s.baseSpd+mon.level*2)*v.spdMult); return base + (mon.spdBonus||0); }
 function getStatTotal(mon){ return getMaxHP(mon)+getAttack(mon)+getDefense(mon)+getSpeed(mon); }
 
-/* XP: double per rarity rank */
 function getVariantExpMultiplier(variantName){ const v=VARIANTS[variantName]||VARIANTS.Normal; const r=v.rarityRank||1; return Math.pow(2,r-1); }
 function getNextLevelExp(level,variantName){ const base=25+level*18; const mult=getVariantExpMultiplier(variantName||"Normal"); return Math.round(base*mult); }
 function getTrainerNextLevelExp(level){ return 120+level*80; }
 
-/* trainer level */
 function addTrainerExp(amount){
   if(amount<=0)return;
   const t = gameState.trainer;
@@ -485,7 +485,6 @@ function addTrainerExp(amount){
   if(leveled) logMessage("Your Trainer level increased! You are now Trainer Lv " + t.level + ".");
 }
 
-/* variant / wild ranges */
 function rollVariant(){
   let total=0; for(const k in VARIANTS)total+=VARIANTS[k].encounterWeight;
   let r=Math.random()*total;
@@ -504,7 +503,6 @@ function getWildLevelRangeForVariant(variantName,isLegendary){
   }
 }
 
-/* monsters, moves, icons */
 function ensureMonsterMoves(mon){ const s=getSpecies(mon); if(!mon.moves||!Array.isArray(mon.moves)||mon.moves.length===0){ mon.moves=(s.moves||["tackle"]).slice(0,4); } else { mon.moves = mon.moves.filter(function(id){return MOVES[id];}); if(mon.moves.length===0)mon.moves=(s.moves||["tackle"]).slice(0,4);} }
 function ensureMonBonuses(mon){ if(mon.hpBonus==null)mon.hpBonus=0; if(mon.atkBonus==null)mon.atkBonus=0; if(mon.defBonus==null)mon.defBonus=0; if(mon.spdBonus==null)mon.spdBonus=0; }
 
@@ -605,8 +603,6 @@ function refreshIcons(){
   }
 }
 
-/* ======================== GAME STATE & SAVE ======================== */
-
 let gameState=null;
 let battle={active:false,isTrainer:false,wild:null,trainerTeam:[],playerIndex:0,trainerIndex:0,participants:[]};
 let currentSection="explore";
@@ -673,7 +669,6 @@ function resetGame(){
   newGame();
 }
 
-/* Export / Import */
 function exportSave(){
   if(!gameState){ alert("No save data to export."); return; }
   try{
@@ -708,8 +703,6 @@ function importSave(file){
   reader.readAsText(file);
 }
 
-/* ======================== DEX HELPERS ======================== */
-
 function hasCurrentVariant(speciesId,variantKey){
   const v=variantKey||"Normal";
   const p=gameState.player.party, box=gameState.player.storage;
@@ -730,14 +723,22 @@ function buildCurrentDexSnapshot(){
   return dex;
 }
 
-/* ======================== RENDERING ======================== */
-
 function renderStatus(){
   const p=gameState.player,inv=gameState.inventory,t=gameState.trainer;
   document.getElementById("status-money").textContent="Money: " + p.money;
   document.getElementById("status-orbs").textContent="Orbs B/G/U/Ult: " + inv.orbBasic + " / " + inv.orbGreat + " / " + inv.orbUltra + " / " + inv.orbUltimate;
   document.getElementById("status-potions").textContent="Potions: " + inv.potion;
   document.getElementById("status-trainer").textContent="Trainer Lv: " + t.level;
+
+  try {
+    var tNext = getTrainerNextLevelExp(t.level);
+    var tPct = Math.max(0, Math.min(100, (t.exp / tNext) * 100));
+    var tFill = document.getElementById("trainer-xp-fill");
+    var tText = document.getElementById("trainer-xp-text");
+    if (tFill) tFill.style.width = tPct + "%";
+    if (tText) tText.textContent = "Trainer XP: " + t.exp + "/" + tNext;
+  } catch(e) {}
+
   document.getElementById("bag-potions").textContent=inv.potion;
   document.getElementById("bag-orb-basic").textContent=inv.orbBasic;
   document.getElementById("bag-orb-great").textContent=inv.orbGreat;
@@ -752,7 +753,6 @@ function renderStatus(){
 
 function canEvolve(mon){ const s=getSpecies(mon); return !!(s.evolvesTo && mon.level>=s.evolveLevel); }
 
-/* ---- New: render training panel with active icon + XP bar ---- */
 function renderTrain(){
   const mon = getActiveMonster();
   const nameEl = document.getElementById("train-active-name");
@@ -885,7 +885,6 @@ function renderStorage(){
   refreshIcons();
 }
 
-/* ---- Dex with completion % + new Owned-only toggle ---- */
 function renderDex(){
   const cont = document.getElementById("dex-list");
   cont.innerHTML = "";
@@ -950,8 +949,6 @@ function renderDex(){
 
   refreshIcons();
 }
-
-/* ======================== BATTLE SYSTEM ======================== */
 
 function renderBattle(){
   const sec=document.getElementById("battle-section");
@@ -1075,7 +1072,6 @@ function switchActiveInBattle(newIndex){
   logMessage("You switched to "+getMonDisplayName(mon)+"!"); enemyTurn();
 }
 
-/* Catching via buttons */
 function catchWithOrb(type){
   const inv=gameState.inventory; if(battle.isTrainer){ logMessage("You cannot catch a trainer's monsters!"); return; }
   const enemy=battle.wild; let key,label;
@@ -1119,8 +1115,6 @@ function endBattle(playerWon,grantExp=true){
   renderBattle(); renderStatus(); renderParty(); refreshIcons(); renderTrain(); saveGame();
 }
 
-/* ======================== EXPLORE / TRAINERS ======================== */
-
 function exploreWild(){
   const roll=Math.random(); if(roll<0.03){ startLegendaryEncounter(); } else { startWildEncounter(); }
 }
@@ -1160,8 +1154,6 @@ function trainActive(){
   renderParty(); renderStatus(); renderTrain(); saveGame();
 }
 
-/* ======================== ITEMS & EVOLUTION ======================== */
-
 function buyItem(type){
   const inv=gameState.inventory; const p=gameState.player; let cost=0;
   switch(type){ case "potion":cost=50;break; case "orbBasic":cost=100;break; case "orbGreat":cost=300;break; case "orbUltra":cost=800;break; case "orbUltimate":cost=5000;break; }
@@ -1180,7 +1172,6 @@ function useXpChipOn(mon){
   logMessage("Used XP Chip on "+getMonDisplayName(mon)+", it gained "+gain+" EXP."); renderParty(); renderStatus(); renderTrain(); saveGame();
 }
 
-/* Icons refresh after evolution */
 function manualEvolve(mon){
   const s=getSpecies(mon);
   if(!s.evolvesTo){ logMessage("This monster cannot evolve further."); return; }
@@ -1194,8 +1185,6 @@ function manualEvolve(mon){
   renderTrain();
   refreshIcons();
 }
-
-/* ======================== NAVIGATION & INIT ======================== */
 
 function showSection(name){
   currentSection = name;
@@ -1219,7 +1208,6 @@ function showSection(name){
 }
 function renderAll(){ renderStatus(); if(currentSection==="party")renderParty(); if(currentSection==="storage")renderStorage(); if(currentSection==="dex")renderDex(); if(currentSection==="train")renderTrain(); renderBattle(); refreshIcons(); }
 
-/* Bindings */
 document.getElementById("reset-btn").onclick=resetGame;
 document.getElementById("explore-btn").onclick=exploreWild;
 document.getElementById("trainer-btn").onclick=startTrainerBattle;
@@ -1233,5 +1221,3 @@ loadGame();
 </script>
 </body>
 </html>
-
-
