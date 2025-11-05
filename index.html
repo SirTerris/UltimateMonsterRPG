@@ -53,8 +53,9 @@
     .caught-pill { display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:999px; font-size:.75rem; border:1px solid #374151; background:#020617; }
     .caught-pill.owned { border-color:#22c55e; color:#bbf7d0; }
 
-    .mon-canvas { width:64px; height:64px; border-radius:6px; background:#020617; border:1px solid #111827; flex-shrink:0; }
-    .dex-canvas { width:40px; height:40px; border-radius:4px; background:#020617; border:1px solid #111827; flex-shrink:0; margin-right:6px; }
+    /* Icon sizing */
+    canvas.mon-icon { display:block; }
+    canvas.dex-icon { display:block; width:40px; height:40px; }
 
     .party-mon, .storage-mon { border-radius:6px; border:1px solid #374151; background:#020617; padding:6px; margin-bottom:6px; }
     .party-mon-inner, .storage-mon-inner { display:flex; gap:8px; }
@@ -71,7 +72,6 @@
 
     .train-active-box { display:flex; align-items:center; gap:8px; border:1px solid #374151; border-radius:6px; padding:6px; margin:6px 0; background:#030a1a; }
     .train-active-box .name-row { font-weight:600; }
-    .train-active-box canvas { width:48px; height:48px; border-radius:6px; background:#020617; border:1px solid #111827; }
 
     #log { max-height:260px; overflow-y:auto; font-size:.8rem; border-radius:8px; background:#020617; padding:6px; border:1px solid #4b5563; }
     .log-line { margin-bottom:2px; }
@@ -455,7 +455,7 @@ function getSpeciesById(id){return MONSTERS.find(m=>m.id===id);}
 function getSpecies(mon){return getSpeciesById(mon.speciesId);}
 function getVariant(mon){return VARIANTS[mon.variant||"Normal"]||VARIANTS.Normal;}
 
-/* ✅ Fixed: no optional chaining */
+/* ✅ Safe active monster getter */
 function getActiveMonster() {
   if (!gameState || !gameState.player || !Array.isArray(gameState.player.party)) {
     return null;
@@ -594,7 +594,12 @@ function refreshIcons(){
     var sid=parseInt(c.dataset.speciesId||c.getAttribute("data-species-id")||"0",10);
     if(!sid)continue;
     var v=c.dataset.variant||"Normal";
-    var size=c.classList.contains("dex-icon")?40:(parseInt(c.width)||64);
+    var size;
+    if(c.classList.contains("dex-icon")) size = 40;
+    else if(c.classList.contains("party-icon")) size = 48;
+    else if(c.classList.contains("storage-icon")) size = 40;
+    else if(c.classList.contains("battle-icon")) size = 64;
+    else size = 48;
     c.width=size;c.height=size;
     drawMonsterIcon(c,sid,v);
   }
@@ -759,6 +764,7 @@ function renderTrain(){
   const s=getSpecies(mon);
   canvas.dataset.speciesId = s.id;
   canvas.dataset.variant   = mon.variant||"Normal";
+  canvas.classList.add("party-icon");
   refreshIcons();
 
   nameEl.textContent = getMonDisplayName(mon);
@@ -780,14 +786,15 @@ function renderParty(){
     const inner=document.createElement("div"); inner.className="party-mon-inner";
 
     const canvas=document.createElement("canvas");
-    canvas.className="mon-icon"; canvas.dataset.speciesId=s.id; canvas.dataset.variant=mon.variant||"Normal";
+    canvas.className="mon-icon party-icon";
+    canvas.dataset.speciesId=s.id; canvas.dataset.variant=mon.variant||"Normal";
     inner.appendChild(canvas);
 
     const right=document.createElement("div");
     const hdr=document.createElement("div"); hdr.className="party-mon-header";
     const left=document.createElement("div");
     left.innerHTML=(idx===gameState.player.activeIndex?"★ ":"")+getMonDisplayName(mon)+" "+(getVariant(mon).name!=="Normal"?('<span class="variant-badge">'+getVariant(mon).name+'</span>'):"");
-    const rightInfo=document.createElement("div"); rightInfo.textContent="Lv "+mon.level+" ("+s.type+")";
+    const rightInfo=document.createElement("div"); rightInfo.textContent="Lv "+mon.level+" ("+getSpecies(mon).type+")";
     hdr.appendChild(left); hdr.appendChild(rightInfo);
 
     const sub=document.createElement("div"); sub.className="party-mon-sub";
@@ -835,6 +842,7 @@ function renderParty(){
     right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
+  refreshIcons();
 }
 
 function moveToStorage(idx){
@@ -863,7 +871,7 @@ function renderStorage(){
     const s=getSpecies(mon),v=getVariant(mon);
     const div=document.createElement("div"); div.className="storage-mon";
     const inner=document.createElement("div"); inner.className="storage-mon-inner";
-    const canvas=document.createElement("canvas"); canvas.className="mon-icon"; canvas.dataset.speciesId=s.id; canvas.dataset.variant=mon.variant||"Normal"; inner.appendChild(canvas);
+    const canvas=document.createElement("canvas"); canvas.className="mon-icon storage-icon"; canvas.dataset.speciesId=s.id; canvas.dataset.variant=mon.variant||"Normal"; inner.appendChild(canvas);
     const right=document.createElement("div");
     const hdr=document.createElement("div"); hdr.className="storage-mon-header";
     hdr.innerHTML="<span>"+getMonDisplayName(mon)+(v.name!=="Normal"?(' <span class=\"variant-badge\">'+v.name+'</span>'):"")+"</span><span>Lv "+mon.level+" (#"+s.id+")</span>";
@@ -874,6 +882,7 @@ function renderStorage(){
     right.appendChild(hdr); right.appendChild(sub); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
+  refreshIcons();
 }
 
 /* ---- Dex with completion % + new Owned-only toggle ---- */
@@ -959,18 +968,18 @@ function renderBattle(){
 
   const pDiv=document.createElement("div"); pDiv.className="battle-mon";
   const pInner=document.createElement("div"); pInner.className="battle-mon-inner";
-  const pCanvas=document.createElement("canvas"); pCanvas.className="mon-icon"; pCanvas.dataset.speciesId=playerMon.speciesId; pCanvas.dataset.variant=playerMon.variant||"Normal"; pInner.appendChild(pCanvas);
+  const pCanvas=document.createElement("canvas"); pCanvas.className="mon-icon battle-icon"; pCanvas.dataset.speciesId=playerMon.speciesId; pCanvas.dataset.variant=playerMon.variant||"Normal"; pInner.appendChild(pCanvas);
   const pRight=document.createElement("div"); pRight.innerHTML="<h3>"+getMonDisplayName(playerMon)+"</h3><div>Lv "+playerMon.level+" ("+getSpecies(playerMon).type+")</div>";
   const pHp=document.createElement("div"); pHp.className="hp-bar";
   const pHpInner=document.createElement("div"); pHpInner.className="hp-bar-inner";
   const pHpPct=Math.max(0,Math.min(100,(playerMon.hp/getMaxHP(playerMon))*100));
   pHpInner.style.width=pHpPct+"%"; pHpInner.style.background=pHpPct<25?"#ef4444":pHpPct<50?"#f59e0b":"#22c55e";
   const pHpTxt=document.createElement("div"); pHpTxt.className="hp-bar-text"; pHpTxt.textContent=playerMon.hp+"/"+getMaxHP(playerMon);
-  pHp.appendChild(pHpInner); pHp.appendChild(pHpTxt); pRight.appendChild(pHp); pInner.appendChild(pRight); pDiv.appendChild(pInner); monRow.appendChild(pDiv);
+  pHp.appendChild(pHpInner); pHp.appendChild(pHpTxt); pInner.appendChild(pRight); pDiv.appendChild(pInner); monRow.appendChild(pDiv);
 
   const eDiv=document.createElement("div"); eDiv.className="battle-mon";
   const eInner=document.createElement("div"); eInner.className="battle-mon-inner";
-  const eCanvas=document.createElement("canvas"); eCanvas.className="mon-icon"; eCanvas.dataset.speciesId=enemy.speciesId; eCanvas.dataset.variant=enemy.variant||"Normal"; eInner.appendChild(eCanvas);
+  const eCanvas=document.createElement("canvas"); eCanvas.className="mon-icon battle-icon"; eCanvas.dataset.speciesId=enemy.speciesId; eCanvas.dataset.variant=enemy.variant||"Normal"; eInner.appendChild(eCanvas);
   const eRight=document.createElement("div");
   const alreadyHave = hasCurrentVariant(enemy.speciesId,enemy.variant||"Normal");
   const caughtPill = "<span class=\"caught-pill "+(alreadyHave?"owned":"")+"\">"+(alreadyHave?"Already caught":"New variant")+"</span>";
