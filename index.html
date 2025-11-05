@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ultimon</title>
+  <title>Mini Monster RPG – Gigantic XP Edition (Trainer XP Bar)</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -82,7 +82,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Ultimon</h1>
+    <h1>Mini Monster RPG – Gigantic XP Edition (Trainer XP Bar)</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -167,15 +167,6 @@
       <button onclick="setStorageSort('levelAsc')">Level ↑</button>
       <button onclick="setStorageSort('totalDesc')">Total Stats ↓</button>
       <button onclick="setStorageSort('totalAsc')">Total Stats ↑</button>
-      <br>
-      <button onclick="setStorageSort('hpDesc')">HP ↓</button>
-      <button onclick="setStorageSort('hpAsc')">HP ↑</button>
-      <button onclick="setStorageSort('atkDesc')">Atk ↓</button>
-      <button onclick="setStorageSort('atkAsc')">Atk ↑</button>
-      <button onclick="setStorageSort('defDesc')">Def ↓</button>
-      <button onclick="setStorageSort('defAsc')">Def ↑</button>
-      <button onclick="setStorageSort('spdDesc')">Spd ↓</button>
-      <button onclick="setStorageSort('spdAsc')">Spd ↑</button>
     </p>
     <div id="storage-list"></div>
   </section>
@@ -824,51 +815,31 @@ function renderParty(){
     hpBar.appendChild(hpInner); hpBar.appendChild(hpTxt);
 
     const btns=document.createElement("div");
-const inv = gameState.inventory || {};
+    const setActiveBtn=document.createElement("button");
+    setActiveBtn.textContent="Set Active";
+    setActiveBtn.onclick=function(){gameState.player.activeIndex=idx;saveGame();renderAll();};
+    btns.appendChild(setActiveBtn);
 
-const setActiveBtn=document.createElement("button");
-setActiveBtn.textContent="Set Active";
-setActiveBtn.onclick=function(){gameState.player.activeIndex=idx;saveGame();renderAll();};
-btns.appendChild(setActiveBtn);
+    if(canEvolve(mon)){
+      const evoBtn=document.createElement("button");
+      evoBtn.textContent="Evolve";
+      evoBtn.onclick=function(){manualEvolve(mon);};
+      btns.appendChild(evoBtn);
+    }
 
-if(canEvolve(mon)){
-  const evoBtn=document.createElement("button");
-  evoBtn.textContent="Evolve";
-  evoBtn.onclick=function(){manualEvolve(mon);};
-  btns.appendChild(evoBtn);
-}
+    const toStorageBtn=document.createElement("button");
+    toStorageBtn.textContent="Send to Storage";
+    toStorageBtn.onclick=function(){moveToStorage(idx);};
+    btns.appendChild(toStorageBtn);
 
-const toStorageBtn=document.createElement("button");
-toStorageBtn.textContent="Send to Storage";
-toStorageBtn.onclick=function(){moveToStorage(idx);};
-btns.appendChild(toStorageBtn);
+    const useHpCore=document.createElement("button"); useHpCore.textContent="Use HP Core"; useHpCore.onclick=function(){useStatItem(mon,"hpCore");}; btns.appendChild(useHpCore);
+    const useAtkCore=document.createElement("button"); useAtkCore.textContent="Use Atk Core"; useAtkCore.onclick=function(){useStatItem(mon,"atkCore");}; btns.appendChild(useAtkCore);
+    const useDefCore=document.createElement("button"); useDefCore.textContent="Use Def Core"; useDefCore.onclick=function(){useStatItem(mon,"defCore");}; btns.appendChild(useDefCore);
+    const useSpdCore=document.createElement("button"); useSpdCore.textContent="Use Spd Core"; useSpdCore.onclick=function(){useStatItem(mon,"spdCore");}; btns.appendChild(useSpdCore);
 
-const useHpCore=document.createElement("button");
-useHpCore.textContent="Use HP Core (" + (inv.hpCore || 0) + ")";
-useHpCore.onclick=function(){useStatItem(mon,"hpCore");};
-btns.appendChild(useHpCore);
+    const useXpChip=document.createElement("button"); useXpChip.textContent="Use XP Chip"; useXpChip.onclick=function(){useXpChipOn(mon);}; btns.appendChild(useXpChip);
 
-const useAtkCore=document.createElement("button");
-useAtkCore.textContent="Use Atk Core (" + (inv.atkCore || 0) + ")";
-useAtkCore.onclick=function(){useStatItem(mon,"atkCore");};
-btns.appendChild(useAtkCore);
-
-const useDefCore=document.createElement("button");
-useDefCore.textContent="Use Def Core (" + (inv.defCore || 0) + ")";
-useDefCore.onclick=function(){useStatItem(mon,"defCore");};
-btns.appendChild(useDefCore);
-
-const useSpdCore=document.createElement("button");
-useSpdCore.textContent="Use Spd Core (" + (inv.spdCore || 0) + ")";
-useSpdCore.onclick=function(){useStatItem(mon,"spdCore");};
-btns.appendChild(useSpdCore);
-
-const useXpChip=document.createElement("button");
-useXpChip.textContent="Use XP Chip (" + (inv.xpChip || 0) + ")";
-useXpChip.onclick=function(){useXpChipOn(mon);};
-btns.appendChild(useXpChip);
-
-right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(btns);
+    right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
   refreshIcons();
@@ -881,19 +852,10 @@ function moveToStorage(idx){
   if(gameState.player.activeIndex>=party.length)gameState.player.activeIndex=party.length-1;
   saveGame(); renderAll();
 }
-function moveToParty(monToMove){
+function moveToParty(index){
   const storage=gameState.player.storage;
   if(gameState.player.party.length>=6){ logMessage("Party is full."); return; }
-
-  const index = storage.findIndex(function(m){ return m===monToMove; });
-  if(index===-1){
-    logMessage("Monster not found in storage.");
-    return;
-  }
-
-  const arr=storage.splice(index,1);
-  const mon=arr[0];
-  gameState.player.party.push(mon);
+  const arr=storage.splice(index,1); const mon=arr[0]; gameState.player.party.push(mon);
   saveGame(); renderAll();
 }
 function setStorageSort(mode){ storageSortMode=mode; renderStorage(); }
@@ -901,31 +863,9 @@ function renderStorage(){
   const cont=document.getElementById("storage-list"); cont.innerHTML="";
   const storage=gameState.player.storage.slice(); const dexId=function(m){return getSpecies(m).id;};
   storage.sort(function(a,b){
-  const sa=dexId(a),sb=dexId(b);
-  const la=a.level,lb=b.level;
-  const ta=getStatTotal(a),tb=getStatTotal(b);
-  const ha=getMaxHP(a),hb=getMaxHP(b);
-  const aa=getAttack(a),ab=getAttack(b);
-  const da=getDefense(a),db=getDefense(b);
-  const spa=getSpeed(a),spb=getSpeed(b);
-  switch(storageSortMode){
-    case "levelDesc": return lb-la || sa-sb;
-    case "levelAsc":  return la-lb || sa-sb;
-    case "totalDesc": return tb-ta || sa-sb;
-    case "totalAsc":  return ta-tb || sa-sb;
-    case "hpDesc":    return hb-ha || sa-sb;
-    case "hpAsc":     return ha-hb || sa-sb;
-    case "atkDesc":   return ab-aa || sa-sb;
-    case "atkAsc":    return aa-ab || sa-sb;
-    case "defDesc":   return db-da || sa-sb;
-    case "defAsc":    return da-db || sa-sb;
-    case "spdDesc":   return spb-spa || sa-sb;
-    case "spdAsc":    return spa-spb || sa-sb;
-    case "dex":
-    default:          return sa-sb;
-  }
-});
-;
+    const sa=dexId(a),sb=dexId(b); const la=a.level,lb=b.level; const ta=getStatTotal(a),tb=getStatTotal(b);
+    switch(storageSortMode){ case "levelDesc":return lb-la||sa-sb; case "levelAsc":return la-lb||sa-sb; case "totalDesc":return tb-ta||sa-sb; case "totalAsc":return ta-tb||sa-sb; case "dex": default:return sa-sb; }
+  });
   if(storage.length===0){ cont.textContent="No monsters in storage."; return; }
   storage.forEach(function(mon,idx){
     const s=getSpecies(mon),v=getVariant(mon);
@@ -938,39 +878,8 @@ function renderStorage(){
     const sub=document.createElement("div"); sub.className="storage-mon-sub";
     sub.innerHTML="<span>Type: "+s.type+(s.isLegendary?" · <span class='ok'>Legendary</span>":"")+"</span><span>HP:"+mon.hp+"/"+getMaxHP(mon)+" Tot:"+getStatTotal(mon)+"</span>";
     const btns=document.createElement("div");
-const inv = gameState.inventory || {};
-
-const toParty=document.createElement("button");
-toParty.textContent="Add to Party";
-toParty.onclick=function(){ moveToParty(mon); };
-btns.appendChild(toParty);
-
-const useHpCore=document.createElement("button");
-useHpCore.textContent="Use HP Core (" + (inv.hpCore || 0) + ")";
-useHpCore.onclick=function(){ useStatItem(mon,"hpCore"); };
-btns.appendChild(useHpCore);
-
-const useAtkCore=document.createElement("button");
-useAtkCore.textContent="Use Atk Core (" + (inv.atkCore || 0) + ")";
-useAtkCore.onclick=function(){ useStatItem(mon,"atkCore"); };
-btns.appendChild(useAtkCore);
-
-const useDefCore=document.createElement("button");
-useDefCore.textContent="Use Def Core (" + (inv.defCore || 0) + ")";
-useDefCore.onclick=function(){ useStatItem(mon,"defCore"); };
-btns.appendChild(useDefCore);
-
-const useSpdCore=document.createElement("button");
-useSpdCore.textContent="Use Spd Core (" + (inv.spdCore || 0) + ")";
-useSpdCore.onclick=function(){ useStatItem(mon,"spdCore"); };
-btns.appendChild(useSpdCore);
-
-const useXpChip=document.createElement("button");
-useXpChip.textContent="Use XP Chip (" + (inv.xpChip || 0) + ")";
-useXpChip.onclick=function(){ useXpChipOn(mon); };
-btns.appendChild(useXpChip);
-
-right.appendChild(hdr); right.appendChild(sub); right.appendChild(btns);
+    const toParty=document.createElement("button"); toParty.textContent="Add to Party"; toParty.onclick=function(){ moveToParty(idx); }; btns.appendChild(toParty);
+    right.appendChild(hdr); right.appendChild(sub); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
   refreshIcons();
@@ -1201,6 +1110,62 @@ function attemptRun(){
   if(Math.random()<0.75){ logMessage("You successfully ran away."); endBattle(false); } else { logMessage("Couldn't escape!"); enemyTurn(); }
 }
 function endBattle(playerWon,grantExp=true){
+  // Rewards only when you actually win the battle and EXP is granted
+  if(playerWon && grantExp){
+    try{
+      const p = gameState.player;
+      const inv = gameState.inventory;
+      const enemy = battle.isTrainer ? battle.trainerTeam[battle.trainerIndex] : battle.wild;
+
+      if(p && inv && enemy){
+        const level = enemy.level || 1;
+
+        // Coins: trainers pay more than wilds, legendaries pay double
+        let coinGain = battle.isTrainer
+          ? (20 + level * 6)   // trainer battle
+          : (5 + level * 3);   // wild battle
+
+        if(enemy.isLegendary) coinGain *= 2;
+
+        coinGain = Math.max(1, Math.round(coinGain));
+        p.money += coinGain;
+        logMessage("You earned " + coinGain + " coins for winning the battle.");
+
+        // Standard item drops: Potion, Basic Orb, XP Chip
+        const roll = Math.random();
+        if(roll < 0.35){
+          inv.potion = (inv.potion || 0) + 1;
+          logMessage("You found a Potion after the battle.");
+        } else if(roll < 0.60){
+          inv.orbBasic = (inv.orbBasic || 0) + 1;
+          logMessage("You found a Basic Orb after the battle.");
+        } else if(roll < 0.70){
+          inv.xpChip = (inv.xpChip || 0) + 1;
+          logMessage("You received an XP Chip as a bonus reward!");
+        }
+
+        // Rare stat core drops
+        const coreRoll = Math.random();
+        if(coreRoll < 0.03){
+          inv.hpCore = (inv.hpCore || 0) + 1;
+          logMessage("You obtained an HP Core!");
+        } else if(coreRoll < 0.06){
+          inv.atkCore = (inv.atkCore || 0) + 1;
+          logMessage("You obtained an Attack Core!");
+        } else if(coreRoll < 0.09){
+          inv.defCore = (inv.defCore || 0) + 1;
+          logMessage("You obtained a Defense Core!");
+        } else if(coreRoll < 0.12){
+          inv.spdCore = (inv.spdCore || 0) + 1;
+          logMessage("You obtained a Speed Core!");
+        }
+      }
+    } catch(e){
+      console.error(e);
+    }
+  }
+
+  // Heal and clean up battle state
   gameState.player.party.forEach(function(m){ m.hp=getMaxHP(m); });
   battle.active=false; battle.wild=null; battle.trainerTeam=[]; battle.participants=[];
   renderBattle(); renderStatus(); renderParty(); refreshIcons(); renderTrain(); saveGame();
@@ -1255,12 +1220,12 @@ function useStatItem(mon,key){
   const inv=gameState.inventory; if(inv[key]<=0){ logMessage("You don't have that stat item."); return; }
   inv[key]--; switch(key){ case "hpCore":mon.hpBonus+=5;break; case "atkCore":mon.atkBonus+=2;break; case "defCore":mon.defBonus+=2;break; case "spdCore":mon.spdBonus+=2;break; }
   mon.hp=getMaxHP(mon); logMessage("Used "+key+" on "+getMonDisplayName(mon)+".");
-  renderParty(); renderStorage(); renderStatus(); renderTrain(); saveGame();
+  renderParty(); renderStatus(); saveGame();
 }
 function useXpChipOn(mon){
   const inv=gameState.inventory; if(inv.xpChip<=0){ logMessage("You don't have any XP Chips."); return; }
   inv.xpChip--; const gain=15; addExpToMonster(mon,gain);
-  logMessage("Used XP Chip on "+getMonDisplayName(mon)+", it gained "+gain+" EXP."); renderParty(); renderStorage(); renderStatus(); renderTrain(); saveGame();
+  logMessage("Used XP Chip on "+getMonDisplayName(mon)+", it gained "+gain+" EXP."); renderParty(); renderStatus(); renderTrain(); saveGame();
 }
 
 function manualEvolve(mon){
