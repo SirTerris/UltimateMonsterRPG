@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ultimon Red</title>
+  <title>Mini Monster RPG – Gigantic XP Edition (Trainer XP Bar)</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -45,14 +45,6 @@
     .xp-bar-inner { height:100%; background:#3b82f6; }
     .xp-bar-text { position:absolute; top:-12px; right:0; font-size:.7rem; color:#93c5fd; }
 
-    .mon-xp-text {
-      position: static;
-      margin-top: 2px;
-      font-size: 0.75rem;
-      color: #bfdbfe;
-      text-align: right;
-    }
-
     .battle-actions { display:flex; flex-wrap:wrap; gap:8px; }
     .moves { flex:2 1 260px; }
     .moves button { margin:2px; padding:5px 7px; border-radius:6px; border:none; background:#1f2937; color:#e5e7eb; cursor:pointer; font-size:.85rem; }
@@ -90,7 +82,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Ultimon Red</h1>
+    <h1>Mini Monster RPG – Gigantic XP Edition (Trainer XP Bar)</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -147,7 +139,7 @@
         <div class="xp-bar" style="margin-top:4px;">
           <div id="train-active-xpfill" class="xp-bar-inner" style="width:0%"></div>
         </div>
-        <div class="mon-xp-text" id="train-active-xptext"></div>
+        <small class="xp-bar-text" id="train-active-xptext"></small>
       </div>
     </div>
     <p class="small-label">
@@ -481,17 +473,7 @@ function getSpeed(mon){ const s=getSpecies(mon),v=getVariant(mon); const base=Ma
 function getStatTotal(mon){ return getMaxHP(mon)+getAttack(mon)+getDefense(mon)+getSpeed(mon); }
 
 function getVariantExpMultiplier(variantName){ const v=VARIANTS[variantName]||VARIANTS.Normal; const r=v.rarityRank||1; return Math.pow(2,r-1); }
-function getNextLevelExp(level,variantName){
-  // Base experience curve
-  const base = 25 + level * level * 0.6;
-
-  // Variant multiplier – always at least 1 and finite
-  const rawMult = getVariantExpMultiplier(variantName || "Normal");
-  const mult = (!isFinite(rawMult) || rawMult <= 0) ? 1 : rawMult;
-
-  const v = Math.round(base * mult);
-  return (isFinite(v) && v > 0) ? v : 1;
-}
+function getNextLevelExp(level,variantName){ const base=25+level*18; const mult=getVariantExpMultiplier(variantName||"Normal"); return Math.round(base*mult); }
 function getTrainerNextLevelExp(level){ return 120+level*80; }
 
 function addTrainerExp(amount){
@@ -567,217 +549,40 @@ function getVariantColorAdjust(variantName){
   }
 }
 function drawMonsterIcon(canvas,speciesId,variantName){
-  const s=getSpeciesById(speciesId);
-  if(!s||!canvas)return;
-  const vName=variantName||"Normal";
-  const ctx=canvas.getContext("2d");
-  const size=Math.min(canvas.width,canvas.height);
-  const cx=size/2,cy=size/2;
-
+  const s=getSpeciesById(speciesId); if(!s||!canvas)return;
+  const vName=variantName||"Normal"; const ctx=canvas.getContext("2d");
+  const size=Math.min(canvas.width,canvas.height); const cx=size/2,cy=size/2;
   ctx.clearRect(0,0,size,size);
+  const baseHue=getTypeBaseHue(s.type); const adj=getVariantColorAdjust(vName);
+  var h=(baseHue+adj.hueShift+360)%360; var sat=Math.min(100,Math.max(10,70*adj.sat)); var light=Math.min(90,Math.max(15,55*adj.light));
+  const seed=s.id; const shapeType=seed%4; const spikes=3+((seed>>2)%5); const rot=((seed*37)%360)*Math.PI/180/4;
 
-  // Colour setup
-  const baseHue=getTypeBaseHue(s.type);
-  const adj=getVariantColorAdjust(vName);
-  let h=(baseHue+adj.hueShift+360)%360;
-  let sat=Math.min(100,Math.max(25,65*adj.sat));
-  let light=Math.min(85,Math.max(20,55*adj.light));
-  const accentHue=(h+25)%360;
-  const accentSat=Math.min(100,sat+12);
-  const accentLight=Math.min(90,light+12);
-
-  // Seeded variation by species id
-  const seed = s.id;
-  const archetype = seed % 4;          // 0..3 body shapes
-  const eyeStyle  = (seed >> 2) % 3;   // 0..2 eye layouts
-  const extraBits = (seed >> 4) % 3;   // 0..2 extra decorations
-
-  ctx.save();
-  ctx.translate(cx,cy);
-
-  const r=size*0.34;
-
-  // --- MAIN BODY SILHOUETTE (changes per archetype) ---
-  ctx.beginPath();
-  switch(archetype){
-    case 0: // rounded dragon head
-      ctx.moveTo(-r*0.8, r*0.2);
-      ctx.quadraticCurveTo(-r*1.0, -r*0.1, -r*0.4, -r*0.9);
-      ctx.quadraticCurveTo(0, -r*1.1, r*0.4, -r*0.9);
-      ctx.quadraticCurveTo(r*1.0, -r*0.1, r*0.8, r*0.2);
-      ctx.quadraticCurveTo(0, r*1.05, -r*0.8, r*0.2);
-      break;
-    case 1: // long snout / wolf-ish
-      ctx.moveTo(-r*0.9, r*0.15);
-      ctx.quadraticCurveTo(-r*1.0, -r*0.25, -r*0.5, -r*0.9);
-      ctx.quadraticCurveTo(-r*0.1, -r*1.05, r*0.5, -r*0.9);
-      ctx.quadraticCurveTo(r*1.0, -r*0.2, r*0.9, r*0.1);
-      ctx.quadraticCurveTo(r*0.2, r*0.9, -r*0.4, r*0.7);
-      ctx.quadraticCurveTo(-r*0.8, r*0.45, -r*0.9, r*0.15);
-      break;
-    case 2: // bulky tank / beetle
-      ctx.moveTo(-r*0.9, 0);
-      ctx.quadraticCurveTo(-r*1.1, -r*0.3, -r*0.6, -r*0.95);
-      ctx.quadraticCurveTo(0, -r*1.15, r*0.6, -r*0.95);
-      ctx.quadraticCurveTo(r*1.1, -r*0.3, r*0.9, 0);
-      ctx.quadraticCurveTo(r*0.7, r*0.9, 0, r*1.05);
-      ctx.quadraticCurveTo(-r*0.7, r*0.9, -r*0.9, 0);
-      break;
-    case 3: // serpent / hooded
-    default:
-      ctx.moveTo(-r*0.7, r*0.4);
-      ctx.quadraticCurveTo(-r*1.1, -r*0.1, -r*0.4, -r*1.0);
-      ctx.quadraticCurveTo(0, -r*0.7, r*0.4, -r*1.0);
-      ctx.quadraticCurveTo(r*1.1, -r*0.1, r*0.7, r*0.4);
-      ctx.quadraticCurveTo(0, r*1.0, -r*0.7, r*0.4);
-      break;
-  }
-  ctx.closePath();
-  ctx.fillStyle=hsl(h,sat,light);
-  ctx.fill();
-  ctx.strokeStyle=hsl(h,sat*0.5,light*0.45);
-  ctx.lineWidth=size*0.035;
-  ctx.stroke();
-
-  // --- TYPE-THEMED CRESTS / HORNS ---
-  ctx.beginPath();
-  switch(s.type){
-    case "Fire":
-      ctx.moveTo(-r*0.35,-r*0.75);
-      ctx.quadraticCurveTo(-r*0.65,-r*1.15,-r*0.1,-r*1.15);
-      ctx.quadraticCurveTo(-r*0.4,-r*0.85,-r*0.35,-r*0.75);
-      ctx.moveTo(r*0.35,-r*0.75);
-      ctx.quadraticCurveTo(r*0.65,-r*1.15,r*0.1,-r*1.15);
-      ctx.quadraticCurveTo(r*0.4,-r*0.85,r*0.35,-r*0.75);
-      break;
-    case "Water":
-      ctx.moveTo(0,-r*0.95);
-      ctx.quadraticCurveTo(r*0.55,-r*1.05,0,-r*1.3);
-      ctx.quadraticCurveTo(-r*0.55,-r*1.05,0,-r*0.95);
-      break;
-    case "Electric":
-      ctx.moveTo(-r*0.18,-r*0.9);
-      ctx.lineTo(0,-r*1.2);
-      ctx.lineTo(r*0.15,-r*0.95);
-      ctx.lineTo(-r*0.02,-r*0.75);
-      ctx.closePath();
-      break;
-    case "Nature":
-    case "Earth":
-      ctx.moveTo(-r*0.75,-r*0.1);
-      ctx.quadraticCurveTo(-r*1.1,-r*0.55,-r*0.55,-r*0.9);
-      ctx.quadraticCurveTo(-r*0.45,-r*0.4,-r*0.75,-r*0.1);
-      ctx.moveTo(r*0.75,-r*0.1);
-      ctx.quadraticCurveTo(r*1.1,-r*0.55,r*0.55,-r*0.9);
-      ctx.quadraticCurveTo(r*0.45,-r*0.4,r*0.75,-r*0.1);
-      break;
-    case "Ice":
-      ctx.moveTo(-r*0.45,-r*0.85);
-      ctx.lineTo(-r*0.2,-r*1.25);
-      ctx.lineTo(0,-r*0.95);
-      ctx.lineTo(r*0.2,-r*1.25);
-      ctx.lineTo(r*0.45,-r*0.85);
-      break;
-    case "Psychic":
-      ctx.moveTo(-r*0.2,-r*1.0);
-      ctx.lineTo(0,-r*1.3);
-      ctx.lineTo(r*0.2,-r*1.0);
-      ctx.lineTo(0,-r*0.85);
-      break;
-    case "Dark":
-    case "Shadow":
-      ctx.moveTo(-r*0.6,-r*0.65);
-      ctx.quadraticCurveTo(-r*1.0,-r*0.95,-r*0.35,-r*1.05);
-      ctx.quadraticCurveTo(-r*0.4,-r*0.8,-r*0.6,-r*0.65);
-      ctx.moveTo(r*0.6,-r*0.65);
-      ctx.quadraticCurveTo(r*1.0,-r*0.95,r*0.35,-r*1.05);
-      ctx.quadraticCurveTo(r*0.4,-r*0.8,r*0.6,-r*0.65);
-      break;
-    default:
-      ctx.moveTo(-r*0.4,-r*0.8);
-      ctx.quadraticCurveTo(-r*0.55,-r*1.05,-r*0.15,-r*1.0);
-      ctx.quadraticCurveTo(-r*0.35,-r*0.75,-r*0.4,-r*0.8);
-      ctx.moveTo(r*0.4,-r*0.8);
-      ctx.quadraticCurveTo(r*0.55,-r*1.05,r*0.15,-r*1.0);
-      ctx.quadraticCurveTo(r*0.35,-r*0.75,r*0.4,-r*0.8);
-      break;
-  }
-  ctx.fillStyle=hsl(accentHue,accentSat,accentLight);
-  ctx.fill();
-
-  // --- EXTRA BITS BASED ON SEED (spikes, jaw plates) ---
-  if(extraBits===1){
-    ctx.beginPath();
-    ctx.moveTo(-r*0.95,0);
-    ctx.lineTo(-r*1.15,0.1*r);
-    ctx.lineTo(-r*0.8,0.2*r);
-    ctx.closePath();
-    ctx.moveTo(r*0.95,0);
-    ctx.lineTo(r*1.15,0.1*r);
-    ctx.lineTo(r*0.8,0.2*r);
-    ctx.closePath();
-    ctx.fillStyle=hsl(h,sat*0.9,light*0.6);
-    ctx.fill();
-  } else if(extraBits===2){
-    ctx.beginPath();
-    ctx.moveTo(-r*0.5,r*0.6);
-    ctx.quadraticCurveTo(-r*0.2,r*0.95,0,r*0.9);
-    ctx.quadraticCurveTo(r*0.2,r*0.95,r*0.5,r*0.6);
-    ctx.quadraticCurveTo(0,r*0.7,-r*0.5,r*0.6);
-    ctx.fillStyle=hsl(h,sat*0.8,light*0.35);
-    ctx.fill();
-  }
-
-  // --- EYES ---
-  const baseEyeY=-size*0.02;
-  const baseEyeX=size*0.11;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot);
+  ctx.beginPath(); ctx.arc(0,0,size*0.46,0,Math.PI*2); ctx.fillStyle=hsl(h,sat*0.3,light*0.4); ctx.fill();
 
   ctx.beginPath();
-  if(eyeStyle===0){
-    ctx.arc(-baseEyeX,baseEyeY,size*0.045,0,Math.PI*2);
-    ctx.arc( baseEyeX,baseEyeY,size*0.045,0,Math.PI*2);
-  } else if(eyeStyle===1){
-    ctx.arc(0,baseEyeY,size*0.06,0,Math.PI*2);
-  } else {
-    ctx.arc(-baseEyeX*0.7,baseEyeY,size*0.03,0,Math.PI*2);
-    ctx.arc(0,baseEyeY,size*0.035,0,Math.PI*2);
-    ctx.arc(baseEyeX*0.7,baseEyeY,size*0.03,0,Math.PI*2);
+  switch(shapeType){
+    case 0: ctx.arc(0,0,size*0.28,0,Math.PI*2); break;
+    case 1: ctx.moveTo(0,-size*0.32); ctx.lineTo(size*0.26,0); ctx.lineTo(0,size*0.32); ctx.lineTo(-size*0.26,0); ctx.closePath(); break;
+    case 2: ctx.moveTo(0,-size*0.34); ctx.lineTo(size*0.30,size*0.2); ctx.lineTo(-size*0.30,size*0.2); ctx.closePath(); break;
+    case 3: const r=size*0.28; ctx.moveTo(-r,-r*0.6); ctx.lineTo(r,-r*0.6); ctx.quadraticCurveTo(r*1.1,0,r,r*0.6); ctx.lineTo(-r,r*0.6); ctx.quadraticCurveTo(-r*1.1,0,-r,-r*0.6); ctx.closePath(); break;
   }
-  ctx.fillStyle=hsl(0,0,96);
-  ctx.fill();
+  ctx.fillStyle=hsl(h,sat,light); ctx.fill();
 
   ctx.beginPath();
-  if(eyeStyle===0){
-    ctx.arc(-baseEyeX,baseEyeY,size*0.02,0,Math.PI*2);
-    ctx.arc( baseEyeX,baseEyeY,size*0.02,0,Math.PI*2);
-  } else if(eyeStyle===1){
-    ctx.arc(0,baseEyeY,size*0.03,0,Math.PI*2);
-  } else {
-    ctx.arc(-baseEyeX*0.7,baseEyeY,size*0.015,0,Math.PI*2);
-    ctx.arc(0,baseEyeY,size*0.02,0,Math.PI*2);
-    ctx.arc(baseEyeX*0.7,baseEyeY,size*0.015,0,Math.PI*2);
-  }
-  ctx.fillStyle=hsl(0,0,10);
-  ctx.fill();
+  const inner=size*0.30; const outer=size*(0.34+((seed%7)/100));
+  for(let i=0;i<spikes;i++){ const a=i*(Math.PI*2/spikes); const x1=Math.cos(a)*inner,y1=Math.sin(a)*inner; const x2=Math.cos(a)*outer,y2=Math.sin(a)*outer; ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); }
+  ctx.strokeStyle=hsl(h,sat*0.9,light*1.05); ctx.lineWidth=size*0.04; ctx.stroke();
 
-  // --- VARIANT GEM / CORE ---
   if(vName!=="Normal"){
-    ctx.beginPath();
-    ctx.arc(0,size*0.14,size*0.09,0,Math.PI*2);
-    let inHue=h,inSat=sat,inLight=light;
+    ctx.beginPath(); ctx.arc(0,0,size*0.18,0,Math.PI*2);
+    var inHue=h,inSat=sat,inLight=light;
     if(["Shiny","Gilded","Divine","Prismatic","Mythic"].includes(vName)){ inHue=50;inSat=90;inLight=80; }
-    else if(["Dark","Shadow","Void","Phantom"].includes(vName)){ inLight=22; }
+    else if(["Dark","Shadow","Void","Phantom"].includes(vName)){ inLight=25; }
     else if(vName==="Cosmic"){ inHue=220;inSat=80;inLight=70; }
     else if(vName==="Aurora"){ inHue=190;inSat=90;inLight=80; }
-    ctx.fillStyle=hsl(inHue,inSat,inLight);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(-size*0.02,size*0.11,size*0.02,0,Math.PI*2);
-    ctx.fillStyle="rgba(255,255,255,0.7)";
-    ctx.fill();
+    ctx.fillStyle=hsl(inHue,inSat,inLight); ctx.fill();
   }
-
   ctx.restore();
 }
 function refreshIcons(){
@@ -999,8 +804,8 @@ function renderParty(){
     const innerXp=document.createElement("div"); innerXp.className="xp-bar-inner";
     const next=getNextLevelExp(mon.level,mon.variant||"Normal"); const pct=Math.max(0,Math.min(100,(mon.exp/next)*100));
     innerXp.style.width=pct+"%";
-    xpBar.appendChild(innerXp);
-    const xpText=document.createElement("div"); xpText.className="mon-xp-text"; xpText.textContent="XP: "+mon.exp+"/"+next;
+    const xpText=document.createElement("div"); xpText.className="xp-bar-text"; xpText.textContent="XP: "+mon.exp+"/"+next;
+    xpBar.appendChild(innerXp); xpBar.appendChild(xpText);
 
     const hpBar=document.createElement("div"); hpBar.className="hp-bar";
     const hpInner=document.createElement("div"); hpInner.className="hp-bar-inner";
@@ -1034,7 +839,7 @@ function renderParty(){
 
     const useXpChip=document.createElement("button"); useXpChip.textContent="Use XP Chip"; useXpChip.onclick=function(){useXpChipOn(mon);}; btns.appendChild(useXpChip);
 
-    right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(xpText); right.appendChild(btns);
+    right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
   refreshIcons();
@@ -1082,7 +887,36 @@ function renderStorage(){
     const sub=document.createElement("div"); sub.className="storage-mon-sub";
     sub.innerHTML="<span>Type: "+s.type+(s.isLegendary?" · <span class='ok'>Legendary</span>":"")+"</span><span>HP:"+mon.hp+"/"+getMaxHP(mon)+" Tot:"+getStatTotal(mon)+"</span>";
     const btns=document.createElement("div");
-    const toParty=document.createElement("button"); toParty.textContent="Add to Party"; toParty.onclick=function(){ moveToParty(mon); }; btns.appendChild(toParty);
+    const toParty=document.createElement("button");
+toParty.textContent="Add to Party";
+toParty.onclick=function(){ moveToParty(mon); };
+btns.appendChild(toParty);
+
+const useHpCore=document.createElement("button");
+useHpCore.textContent="Use HP Core";
+useHpCore.onclick=function(){ useStatItem(mon,"hpCore"); };
+btns.appendChild(useHpCore);
+
+const useAtkCore=document.createElement("button");
+useAtkCore.textContent="Use Atk Core";
+useAtkCore.onclick=function(){ useStatItem(mon,"atkCore"); };
+btns.appendChild(useAtkCore);
+
+const useDefCore=document.createElement("button");
+useDefCore.textContent="Use Def Core";
+useDefCore.onclick=function(){ useStatItem(mon,"defCore"); };
+btns.appendChild(useDefCore);
+
+const useSpdCore=document.createElement("button");
+useSpdCore.textContent="Use Spd Core";
+useSpdCore.onclick=function(){ useStatItem(mon,"spdCore"); };
+btns.appendChild(useSpdCore);
+
+const useXpChip=document.createElement("button");
+useXpChip.textContent="Use XP Chip";
+useXpChip.onclick=function(){ useXpChipOn(mon); };
+btns.appendChild(useXpChip);
+
     right.appendChild(hdr); right.appendChild(sub); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
@@ -1227,57 +1061,23 @@ function grantExpToParticipants(baseExp){
   if(baseExp<=0)return;
   const party=gameState.player.party;
   const uniqIndexes=[];
-
-  if(Array.isArray(battle.participants)){
-    for(let i=0;i<battle.participants.length;i++){
-      const idx=battle.participants[i];
-      if(typeof idx==="number" && idx>=0 && idx<party.length && uniqIndexes.indexOf(idx)===-1){
-        uniqIndexes.push(idx);
-      }
-    }
-  }
-
-  // Fallback: if no participants recorded, give XP to current active monster
-  if(uniqIndexes.length===0 && battle.playerIndex>=0 && battle.playerIndex<party.length){
-    uniqIndexes.push(battle.playerIndex);
-  }
-
+  for(var i=0;i<battle.participants.length;i++){ var idx=battle.participants[i]; if(idx>=0 && idx<party.length && uniqIndexes.indexOf(idx)===-1) uniqIndexes.push(idx); }
   if(uniqIndexes.length===0)return;
-
   const each=Math.max(1,Math.round(baseExp/uniqIndexes.length));
-  uniqIndexes.forEach(function(i){
-    const mon=party[i];
-    if(mon) addExpToMonster(mon,each);
-  });
-
+  uniqIndexes.forEach(function(i){ const mon=party[i]; addExpToMonster(mon,each); });
   addTrainerExp(Math.round(baseExp/4));
 }
-
 function addExpToMonster(mon,amount){
   if(amount<=0)return;
   if(mon.level>=100){ mon.level=100; mon.exp=0; return; }
   mon.exp+=amount;
   let leveled=false;
-
-  // Safety guard to prevent infinite loops
-  let guard=0;
-  while(mon.level<100 && guard<200){
-    const needed = getNextLevelExp(mon.level,mon.variant||"Normal");
-    if(!isFinite(needed) || needed<=0) break;
-    if(mon.exp<needed) break;
-
-    mon.exp-=needed;
-    mon.level++;
-    leveled=true;
-    logMessage(getMonDisplayName(mon)+" grew to level "+mon.level+"!");
-
+  while(mon.level<100 && mon.exp>=getNextLevelExp(mon.level,mon.variant||"Normal")){
+    mon.exp-=getNextLevelExp(mon.level,mon.variant||"Normal");
+    mon.level++; leveled=true; logMessage(getMonDisplayName(mon)+" grew to level "+mon.level+"!");
     if(mon.level>=100){ mon.level=100; mon.exp=0; break; }
-    guard++;
   }
-
-  if(leveled && canEvolve(mon)){
-    logMessage(getMonDisplayName(mon)+" is ready to evolve! Use the Evolve button in Party.");
-  }
+  if(leveled && canEvolve(mon)){ logMessage(getMonDisplayName(mon)+" is ready to evolve! Use the Evolve button in Party."); }
 }
 
 function playerUseMove(move){
@@ -1348,71 +1148,9 @@ function attemptRun(){
   if(Math.random()<0.75){ logMessage("You successfully ran away."); endBattle(false); } else { logMessage("Couldn't escape!"); enemyTurn(); }
 }
 function endBattle(playerWon,grantExp=true){
-  // Give rewards only if you actually won by KO (not catching or running).
-  if (playerWon && grantExp) {
-    try {
-      const p   = gameState.player;
-      const inv = gameState.inventory;
-      const enemy = battle.isTrainer ? battle.trainerTeam[battle.trainerIndex] : battle.wild;
-
-      if (enemy) {
-        const level = enemy.level || 1;
-
-        // Coins: trainer fights pay more than wild fights.
-        let coinGain = battle.isTrainer
-          ? (20 + level * 6)   // trainers
-          : (5  + level * 3);  // wild
-
-        if (enemy.isLegendary) coinGain *= 2;
-
-        coinGain = Math.max(1, Math.round(coinGain));
-        p.money += coinGain;
-        logMessage("You earned " + coinGain + " coins for winning the battle.");
-
-        // Item drops: potions, basic orbs, XP chips
-        const roll = Math.random();
-        if (roll < 0.35) {
-          inv.potion++;
-          logMessage("You found a Potion after the battle.");
-        } else if (roll < 0.60) {
-          inv.orbBasic++;
-          logMessage("You found a Basic Orb after the battle.");
-        } else if (roll < 0.70) {
-          inv.xpChip++;
-          logMessage("You received an XP Chip as a bonus reward!");
-        }
-
-        // Stat core drops (rare)
-        const coreRoll = Math.random();
-        if (coreRoll < 0.03) {
-          inv.hpCore++;
-          logMessage("You obtained an HP Core!");
-        } else if (coreRoll < 0.06) {
-          inv.atkCore++;
-          logMessage("You obtained an Attack Core!");
-        } else if (coreRoll < 0.09) {
-          inv.defCore++;
-          logMessage("You obtained a Defense Core!");
-        } else if (coreRoll < 0.12) {
-          inv.spdCore++;
-          logMessage("You obtained a Speed Core!");
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  // Heal party and clean up battle state
   gameState.player.party.forEach(function(m){ m.hp=getMaxHP(m); });
   battle.active=false; battle.wild=null; battle.trainerTeam=[]; battle.participants=[];
-
-  renderBattle();
-  renderStatus();
-  renderParty();
-  refreshIcons();
-  renderTrain();
-  saveGame();
+  renderBattle(); renderStatus(); renderParty(); refreshIcons(); renderTrain(); saveGame();
 }
 
 function exploreWild(){
@@ -1464,12 +1202,12 @@ function useStatItem(mon,key){
   const inv=gameState.inventory; if(inv[key]<=0){ logMessage("You don't have that stat item."); return; }
   inv[key]--; switch(key){ case "hpCore":mon.hpBonus+=5;break; case "atkCore":mon.atkBonus+=2;break; case "defCore":mon.defBonus+=2;break; case "spdCore":mon.spdBonus+=2;break; }
   mon.hp=getMaxHP(mon); logMessage("Used "+key+" on "+getMonDisplayName(mon)+".");
-  renderParty(); renderStatus(); saveGame();
+  renderParty(); renderStorage(); renderStatus(); renderTrain(); saveGame();
 }
 function useXpChipOn(mon){
   const inv=gameState.inventory; if(inv.xpChip<=0){ logMessage("You don't have any XP Chips."); return; }
   inv.xpChip--; const gain=15; addExpToMonster(mon,gain);
-  logMessage("Used XP Chip on "+getMonDisplayName(mon)+", it gained "+gain+" EXP."); renderParty(); renderStatus(); renderTrain(); saveGame();
+  logMessage("Used XP Chip on "+getMonDisplayName(mon)+", it gained "+gain+" EXP."); renderParty(); renderStorage(); renderStatus(); renderTrain(); saveGame();
 }
 
 function manualEvolve(mon){
@@ -1477,35 +1215,8 @@ function manualEvolve(mon){
   if(!s.evolvesTo){ logMessage("This monster cannot evolve further."); return; }
   if(mon.level<s.evolveLevel){ logMessage(getMonDisplayName(mon)+" is not high enough level to evolve."); return; }
   const target=getSpeciesById(s.evolvesTo);
-
-  // Check if we already own this species elsewhere (party or storage), excluding this monster pre-evo
-  let alreadyOwned=false;
-  const p = gameState.player;
-  if (p && p.party) {
-    alreadyOwned = p.party.some(function(m){
-      return m!==mon && getSpecies(m).id===target.id;
-    });
-  }
-  if (!alreadyOwned && p && p.storage) {
-    alreadyOwned = p.storage.some(function(m){
-      return getSpecies(m).id===target.id;
-    });
-  }
-
-  // Perform evolution
-  mon.speciesId=target.id;
-  mon.exp = 0; // reset exp on evolution to avoid weird leftover thresholds
-  ensureMonsterMoves(mon);
-  mon.hp=getMaxHP(mon);
-
+  mon.speciesId=target.id; ensureMonsterMoves(mon); mon.hp=getMaxHP(mon);
   logMessage(s.name+" evolved into "+target.name+"!");
-
-  if(alreadyOwned){
-    logMessage("You already have a "+target.name+" in your collection.");
-  } else {
-    logMessage("This is your first "+target.name+"!");
-  }
-
   saveGame();
   renderParty();
   renderDex();
