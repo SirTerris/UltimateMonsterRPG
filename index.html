@@ -24,17 +24,32 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
+      gap: 8px;
     }
     header h1 { font-size: 1.3rem; margin: 0; }
-    header button {
+    .header-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    header button, .import-label {
       padding: 4px 8px;
       border-radius: 6px;
       border: none;
-      background: #b91c1c;
-      color: #fee2e2;
+      background: #1f2937;
+      color: #e5e7eb;
       cursor: pointer;
       font-size: 0.8rem;
     }
+    #reset-btn {
+      background: #b91c1c;
+      color: #fee2e2;
+    }
+    .import-label {
+      display: inline-block;
+    }
+
     #status-bar { font-size: 0.85rem; margin-bottom: 6px; }
     #status-bar span { margin-right: 10px; }
 
@@ -327,7 +342,12 @@
 <div id="game">
   <header>
     <h1>Mini Monster RPG – Gigantic XP Edition</h1>
-    <button id="reset-btn">Reset Gigantic Save</button>
+    <div class="header-buttons">
+      <button id="reset-btn">Reset Gigantic Save</button>
+      <button id="export-btn">Export Save</button>
+      <label for="import-file" class="import-label">Import Save</label>
+      <input type="file" id="import-file" accept="application/json" style="display:none">
+    </div>
   </header>
 
   <div id="status-bar">
@@ -1087,6 +1107,7 @@ function migrateInventory(inv){
 function saveGame(){
   if(gameState)localStorage.setItem(STORAGE_KEY,JSON.stringify(gameState));
 }
+
 function loadGame(){
   const raw=localStorage.getItem(STORAGE_KEY);
   if(!raw){newGame();return;}
@@ -1114,6 +1135,7 @@ function loadGame(){
     newGame();
   }
 }
+
 function newGame(){
   gameState={
     player:{name:"Player",money:300,party:[],storage:[],activeIndex:0},
@@ -1129,6 +1151,7 @@ function newGame(){
   logMessage("New gigantic XP game started! You received your first monster.");
   renderAll();
 }
+
 function resetGame(){
   if(!confirm("Reset gigantic XP edition save?"))return;
   localStorage.removeItem(STORAGE_KEY);
@@ -1136,6 +1159,61 @@ function resetGame(){
   gameState=null;
   battle={active:false,isTrainer:false,wild:null,trainerTeam:[],playerIndex:0,trainerIndex:0,participants:[]};
   newGame();
+}
+
+/* ===== Manual Export / Import ===== */
+
+function exportSave(){
+  if(!gameState){
+    alert("No save data to export.");
+    return;
+  }
+  try{
+    const dataStr = JSON.stringify(gameState);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mini_monster_gigantic_save.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    logMessage("Exported save to file.");
+  }catch(e){
+    console.error(e);
+    alert("Failed to export save: " + e);
+  }
+}
+
+function importSave(file){
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.player || !Array.isArray(data.player.party) || !data.inventory){
+        throw new Error("File does not look like a valid save.");
+      }
+      // migrate and normalize
+      migrateInventory(data.inventory);
+      if(!data.player.storage)data.player.storage=[];
+      if(!data.trainer)data.trainer={level:1,exp:0};
+      if(data.player.activeIndex==null)data.player.activeIndex=0;
+
+      data.player.party.forEach(m=>{ensureMonsterMoves(m);ensureMonBonuses(m);});
+      data.player.storage.forEach(m=>{ensureMonsterMoves(m);ensureMonBonuses(m);});
+
+      gameState = data;
+      battle={active:false,isTrainer:false,wild:null,trainerTeam:[],playerIndex:gameState.player.activeIndex,trainerIndex:0,participants:[]};
+      saveGame();
+      logMessage("Save imported successfully.");
+      renderAll();
+    }catch(err){
+      console.error(err);
+      alert("Failed to import save: " + err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 /* ======================== DEX HELPERS ======================== */
@@ -1401,7 +1479,6 @@ function renderDex(){
 
   const dexSnapshot = buildCurrentDexSnapshot();
 
-  // all species in the game, sorted by dex id
   const allSpecies = [...MONSTERS].sort((a, b) => a.id - b.id);
 
   const ownedSpeciesCount = allSpecies.filter(s => dexSnapshot[s.id]).length;
@@ -1448,7 +1525,8 @@ function renderDex(){
     if (s.isLegendary) {
       const tag = document.createElement("span");
       tag.className = "legendary-tag";
-      tag.textContent = "Legendary";
+      text = "Legendary";
+      tag.textContent = text;
       right.appendChild(tag);
     }
     hdr.appendChild(right);
@@ -1933,7 +2011,7 @@ function startWildEncounter(){
 function startLegendaryEncounter(){
   const legId=randomChoice(LEGENDARY_IDS);
   const s=getSpeciesById(legId);
-  const variant=rollVariant(); // legendary can also be variant
+  const variant=rollVariant();
   const [minL,maxL]=getWildLevelRangeForVariant(variant,true);
   const level=minL+Math.floor(Math.random()*(maxL-minL+1));
   const wild=createMonsterInstance(s.id,level,variant);
@@ -1985,7 +2063,7 @@ function trainActive(){
     return;
   }
   const t=gameState.trainer;
-  const gain=1 + t.level; // 1 xp per trainer level
+  const gain=1 + t.level;
   addExpToMonster(mon,gain);
   addTrainerExp(3);
   logMessage(`You trained ${getMonDisplayName(mon)}. It gained ${gain} EXP.`);
@@ -2113,6 +2191,14 @@ document.getElementById("train-btn").onclick=trainActive;
 
 document.querySelectorAll("#nav button").forEach(btn=>{
   btn.onclick=()=>showSection(btn.dataset.section);
+});
+
+// Export / Import buttons
+document.getElementById("export-btn").onclick = exportSave;
+document.getElementById("import-file").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if(file) importSave(file);
+  e.target.value = "";
 });
 
 /* ======================== INIT ======================== */
