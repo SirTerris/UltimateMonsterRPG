@@ -1194,7 +1194,6 @@ function importSave(file){
       if(!data.player || !Array.isArray(data.player.party) || !data.inventory){
         throw new Error("File does not look like a valid save.");
       }
-      // migrate and normalize
       migrateInventory(data.inventory);
       if(!data.player.storage)data.player.storage=[];
       if(!data.trainer)data.trainer={level:1,exp:0};
@@ -1416,7 +1415,6 @@ function renderStorage(){
   const cont=document.getElementById("storage-list");
   cont.innerHTML="";
   const storage=gameState.player.storage.slice();
-  const party=gameState.player.party;
   const dexId=(m)=>getSpecies(m).id;
   storage.sort((a,b)=>{
     const sa=dexId(a),sb=dexId(b);
@@ -1473,6 +1471,8 @@ function renderStorage(){
   });
 }
 
+/* ===== New Dex with completion % ===== */
+
 function renderDex(){
   const cont = document.getElementById("dex-list");
   cont.innerHTML = "";
@@ -1480,19 +1480,34 @@ function renderDex(){
   const dexSnapshot = buildCurrentDexSnapshot();
 
   const allSpecies = [...MONSTERS].sort((a, b) => a.id - b.id);
+  const totalSpecies = allSpecies.length;
+  const totalForms = totalSpecies * VARIANT_KEYS.length; // 4180 × 20 = 83,600
 
   const ownedSpeciesCount = allSpecies.filter(s => dexSnapshot[s.id]).length;
 
   let ownedVariantCopies = 0;
+  let uniqueFormsOwned = 0;
+
   for (const sid in dexSnapshot) {
     const variants = dexSnapshot[sid];
     for (const vKey in variants) {
+      uniqueFormsOwned++;
       ownedVariantCopies += variants[vKey].owned;
     }
   }
 
+  const speciesPercent = totalSpecies
+    ? (ownedSpeciesCount / totalSpecies * 100).toFixed(2)
+    : "0.00";
+
+  const formsPercent = totalForms
+    ? (uniqueFormsOwned / totalForms * 100).toFixed(2)
+    : "0.00";
+
   document.getElementById("dex-summary").textContent =
-    `Species owned: ${ownedSpeciesCount}/${allSpecies.length} · Owned variants (copies): ${ownedVariantCopies}`;
+    `Species: ${ownedSpeciesCount}/${totalSpecies} (${speciesPercent}%) · ` +
+    `Unique forms: ${uniqueFormsOwned}/${totalForms} (${formsPercent}%) · ` +
+    `Owned monsters (copies): ${ownedVariantCopies}`;
 
   if (allSpecies.length === 0) {
     cont.textContent = "No species defined (something is wrong).";
@@ -1525,8 +1540,7 @@ function renderDex(){
     if (s.isLegendary) {
       const tag = document.createElement("span");
       tag.className = "legendary-tag";
-      text = "Legendary";
-      tag.textContent = text;
+      tag.textContent = "Legendary";
       right.appendChild(tag);
     }
     hdr.appendChild(right);
@@ -1671,10 +1685,35 @@ function renderBattle(){
 
   const side=document.createElement("div");
   side.className="side-actions";
-  const catchBtn=document.createElement("button");
-  catchBtn.textContent="Throw Orb";
-  catchBtn.onclick=()=>openCatchMenu();
-  side.appendChild(catchBtn);
+
+  // Orb buttons instead of typing
+  if(!battle.isTrainer){
+    const orbBox=document.createElement("div");
+    const label=document.createElement("div");
+    label.textContent="Throw Orb:";
+    orbBox.appendChild(label);
+    const inv=gameState.inventory;
+
+    function makeOrbBtn(text,type,key){
+      const b=document.createElement("button");
+      b.textContent=`${text} (x${inv[key]})`;
+      if(inv[key]<=0) b.disabled=true;
+      b.onclick=()=>catchWithOrb(type);
+      orbBox.appendChild(b);
+    }
+
+    makeOrbBtn("Basic","Basic","orbBasic");
+    makeOrbBtn("Great","Great","orbGreat");
+    makeOrbBtn("Ultra","Ultra","orbUltra");
+    makeOrbBtn("Ultimate","Ultimate","orbUltimate");
+
+    side.appendChild(orbBox);
+  } else {
+    const infoBtn=document.createElement("button");
+    infoBtn.textContent="Cannot catch trainer's monsters";
+    infoBtn.disabled=true;
+    side.appendChild(infoBtn);
+  }
 
   const potionBtn=document.createElement("button");
   potionBtn.textContent="Use Potion";
@@ -1688,9 +1727,9 @@ function renderBattle(){
 
   const switchBox=document.createElement("div");
   switchBox.className="switch-list";
-  const label=document.createElement("div");
-  label.textContent="Switch Monster:";
-  switchBox.appendChild(label);
+  const label2=document.createElement("div");
+  label2.textContent="Switch Monster:";
+  switchBox.appendChild(label2);
   gameState.player.party.forEach((mon,idx)=>{
     if(idx===battle.playerIndex)return;
     if(mon.hp<=0)return;
@@ -1837,60 +1876,43 @@ function switchActiveInBattle(newIndex){
   enemyTurn();
 }
 
-function openCatchMenu(){
-  const inv=gameState.inventory;
-  const options=[];
-  if(inv.orbBasic>0)options.push("Basic");
-  if(inv.orbGreat>0)options.push("Great");
-  if(inv.orbUltra>0)options.push("Ultra");
-  if(inv.orbUltimate>0)options.push("Ultimate");
-  if(options.length===0){
-    logMessage("You have no orbs!");
-    return;
-  }
-  const choice=prompt("Which orb? ("+options.join("/")+"), cancel to back");
-  if(!choice)return;
-  const normalized=choice.trim().toLowerCase();
-  if(normalized.startsWith("ultimate")){
-    if(inv.orbUltimate<=0){logMessage("No Ultimate Orbs left.");return;}
-    inv.orbUltimate--;
-    catchWithOrb("Ultimate");
-  }else if(normalized.startsWith("ultra")){
-    if(inv.orbUltra<=0){logMessage("No Ultra Orbs left.");return;}
-    inv.orbUltra--;
-    catchWithOrb("Ultra");
-  }else if(normalized.startsWith("great")){
-    if(inv.orbGreat<=0){logMessage("No Great Orbs left.");return;}
-    inv.orbGreat--;
-    catchWithOrb("Great");
-  }else if(normalized.startsWith("basic")){
-    if(inv.orbBasic<=0){logMessage("No Basic Orbs left.");return;}
-    inv.orbBasic--;
-    catchWithOrb("Basic");
-  }else{
-    logMessage("You fumble the orb choice and do nothing.");
-  }
-  renderStatus();
-}
-
+/* New: button-based orb throwing */
 function catchWithOrb(type){
-  const enemy=battle.isTrainer?battle.trainerTeam[battle.trainerIndex]:battle.wild;
+  const inv=gameState.inventory;
   if(battle.isTrainer){
     logMessage("You cannot catch a trainer's monsters!");
     return;
   }
+  const enemy=battle.wild;
+  let key,label;
+  switch(type){
+    case "Basic":   key="orbBasic";   label="Basic Orb"; break;
+    case "Great":   key="orbGreat";   label="Great Orb"; break;
+    case "Ultra":   key="orbUltra";   label="Ultra Orb"; break;
+    case "Ultimate":key="orbUltimate";label="Ultimate Orb"; break;
+    default:return;
+  }
+  if(inv[key]<=0){
+    logMessage(`You have no ${label}s left.`);
+    return;
+  }
+  inv[key]--;
+  renderStatus();
+  saveGame();
+
   if(type==="Ultimate"){
     logMessage("Ultimate Orb never fails! You caught it!");
     onCatchSuccess(enemy,type);
     return;
   }
+
   const chance=getCatchChance(enemy,type);
   const roll=Math.random();
   if(roll<chance){
-    logMessage(`${type} Orb worked! You caught ${getMonDisplayName(enemy)}.`);
+    logMessage(`${label} worked! You caught ${getMonDisplayName(enemy)}.`);
     onCatchSuccess(enemy,type);
   }else{
-    logMessage(`${type} Orb failed to catch ${getMonDisplayName(enemy)}.`);
+    logMessage(`${label} failed to catch ${getMonDisplayName(enemy)}.`);
     enemyTurn();
   }
 }
@@ -1928,7 +1950,7 @@ function onCatchSuccess(mon,orbType){
     gameState.player.storage.push(caught);
     logMessage(`${getMonDisplayName(caught)} was sent to storage.`);
   }
-  endBattle(true,false); // no extra exp, we caught instead
+  endBattle(true,false);
 }
 
 function usePotionInBattle(){
@@ -1946,6 +1968,7 @@ function usePotionInBattle(){
   const heal=20;
   mon.hp=Math.min(getMaxHP(mon),mon.hp+heal);
   logMessage(`You used a potion on ${getMonDisplayName(mon)}, restoring ${heal} HP.`);
+  renderStatus();
   enemyTurn();
 }
 
@@ -1965,7 +1988,6 @@ function attemptRun(){
 }
 
 function endBattle(playerWon,grantExp=true){
-  // heal party fully after any battle
   gameState.player.party.forEach(m=>m.hp=getMaxHP(m));
   battle.active=false;
   battle.wild=null;
