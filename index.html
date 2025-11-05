@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mini Monster RPG – Gigantic XP Edition (Trainer + Monster XP Numbers)</title>
+  <title>Ultimate Monster RPG</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#020617; color:#e5e7eb; margin:0; padding:0; display:flex; justify-content:center; }
     #game { max-width:1150px; width:100%; padding:12px; box-sizing:border-box; }
@@ -43,7 +43,15 @@
 
     .xp-bar { position:relative; background:#020617; border-radius:4px; height:8px; margin-top:2px; overflow:hidden; border:1px solid #1d4ed8; }
     .xp-bar-inner { height:100%; background:#3b82f6; }
-    .xp-bar-text { margin-top:2px; font-size:0.75rem; color:#bfdbfe; text-align:center; position:static; }
+    \1
+.mon-xp-text {
+  position: static;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: #bfdbfe;
+  text-align: right;
+}
+
 
     .battle-actions { display:flex; flex-wrap:wrap; gap:8px; }
     .moves { flex:2 1 260px; }
@@ -82,7 +90,7 @@
 <body>
 <div id="game">
   <header>
-    <h1>Mini Monster RPG – Gigantic XP Edition (Trainer + Monster XP Numbers)</h1>
+    <h1>Ultimate Monster RPG</h1>
     <div class="header-buttons">
       <button id="reset-btn">Reset Gigantic Save</button>
       <button id="export-btn">Export Save</button>
@@ -101,7 +109,7 @@
     <div class="xp-bar">
       <div id="trainer-xp-fill" class="xp-bar-inner" style="width:0%"></div>
     </div>
-    <div class="xp-bar-text" id="trainer-xp-text" style="margin-top:2px; font-size:0.75rem; color:#bfdbfe;">
+    <div class="xp-bar-text" id="trainer-xp-text" style="position:static; margin-top:2px; font-size:0.75rem; color:#bfdbfe;">
       Trainer XP: 0/0
     </div>
   </div>
@@ -121,7 +129,7 @@
   <section id="explore-section">
     <h2>Explore</h2>
     <p class="small-label">
-      Gigantic save: 4000 regular species × 20 variants, plus 10 legendaries for each of 18 types.
+      This is a separate gigantic save: 4000 regular species × 20 variants, plus 10 legendaries for each of 18 types.
       Only basic-stage monsters appear in the wild (plus ultra-rare legendaries).
       Higher rarity = much slower leveling (XP cost doubles each rarity rank).
     </p>
@@ -139,7 +147,7 @@
         <div class="xp-bar" style="margin-top:4px;">
           <div id="train-active-xpfill" class="xp-bar-inner" style="width:0%"></div>
         </div>
-        <div class="xp-bar-text" id="train-active-xptext"></div>
+        <div class="mon-xp-text" id="train-active-xptext"></div>
       </div>
     </div>
     <p class="small-label">
@@ -414,7 +422,7 @@ const LEGENDARY_IDS = [];
     MONSTERS.push({ id:id2,name:n2,type,stage:2, baseHP:s2.hp,baseAtk:s2.atk,baseDef:s2.def,baseSpd:s2.spd, catchRate:0.28,moves:buildMoves(2,type), evolvesTo:id3,evolveLevel:30+(idx%8) });
 
     const s3 = adjustByType({hp:baseHP1+40,atk:baseAtk1+16,def:baseDef1+16,spd:baseSpd1+12}, type);
-    MONSTERS.push({ id:id3,name:n3,type,stage:3, baseHP:s3.hp,baseAtk:s3.atk,baseDef:s3.spd,baseSpd:s3.spd, catchRate:0.12,moves:buildMoves(3,type) });
+    MONSTERS.push({ id:id3,name:n3,type,stage:3, baseHP:s3.hp,baseAtk:s3.atk,baseDef:s3.def,baseSpd:s3.spd, catchRate:0.12,moves:buildMoves(3,type) });
   }
 
   MONSTERS.push({ id:id++, name:"Omnimon", type:"Chaos", stage:3, baseHP:95,baseAtk:32,baseDef:28,baseSpd:28, catchRate:0.18, moves:["smash","chaosjolt","warpstrike","collapse"] });
@@ -801,11 +809,11 @@ function renderParty(){
     sub.innerHTML="<span>HP: "+mon.hp+"/"+getMaxHP(mon)+"</span><span>Atk: "+getAttack(mon)+" Def: "+getDefense(mon)+" Spd: "+getSpeed(mon)+"</span>";
 
     const xpBar=document.createElement("div"); xpBar.className="xp-bar";
-    const innerXp=document.createElement("div"); innerXp.className="xp-bar-inner";
-    const next=getNextLevelExp(mon.level,mon.variant||"Normal"); const pct=Math.max(0,Math.min(100,(mon.exp/next)*100));
-    innerXp.style.width=pct+"%";
-    const xpText=document.createElement("div"); xpText.className="xp-bar-text"; xpText.textContent="XP: "+mon.exp+"/"+next;
-    xpBar.appendChild(innerXp); xpBar.appendChild(xpText);
+const innerXp=document.createElement("div"); innerXp.className="xp-bar-inner";
+const next=getNextLevelExp(mon.level,mon.variant||"Normal"); const pct=Math.max(0,Math.min(100,(mon.exp/next)*100));
+innerXp.style.width=pct+"%";
+xpBar.appendChild(innerXp);
+const xpText=document.createElement("div"); xpText.className="mon-xp-text"; xpText.textContent="XP: "+mon.exp+"/"+next;
 
     const hpBar=document.createElement("div"); hpBar.className="hp-bar";
     const hpInner=document.createElement("div"); hpInner.className="hp-bar-inner";
@@ -839,7 +847,7 @@ function renderParty(){
 
     const useXpChip=document.createElement("button"); useXpChip.textContent="Use XP Chip"; useXpChip.onclick=function(){useXpChipOn(mon);}; btns.appendChild(useXpChip);
 
-    right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(btns);
+    right.appendChild(hdr); right.appendChild(sub); right.appendChild(hpBar); right.appendChild(xpBar); right.appendChild(xpText); right.appendChild(btns);
     inner.appendChild(right); div.appendChild(inner); cont.appendChild(div);
   });
   refreshIcons();
@@ -874,7 +882,7 @@ function renderStorage(){
     const canvas=document.createElement("canvas"); canvas.className="mon-icon storage-icon"; canvas.dataset.speciesId=s.id; canvas.dataset.variant=mon.variant||"Normal"; inner.appendChild(canvas);
     const right=document.createElement("div");
     const hdr=document.createElement("div"); hdr.className="storage-mon-header";
-    hdr.innerHTML="<span>"+getMonDisplayName(mon)+(v.name!=="Normal"?(' <span class=\\"variant-badge\\">'+v.name+'</span>'):"")+"</span><span>Lv "+mon.level+" (#"+s.id+")</span>";
+    hdr.innerHTML="<span>"+getMonDisplayName(mon)+(v.name!=="Normal"?(' <span class=\"variant-badge\">'+v.name+'</span>'):"")+"</span><span>Lv "+mon.level+" (#"+s.id+")</span>";
     const sub=document.createElement("div"); sub.className="storage-mon-sub";
     sub.innerHTML="<span>Type: "+s.type+(s.isLegendary?" · <span class='ok'>Legendary</span>":"")+"</span><span>HP:"+mon.hp+"/"+getMaxHP(mon)+" Tot:"+getStatTotal(mon)+"</span>";
     const btns=document.createElement("div");
@@ -979,7 +987,7 @@ function renderBattle(){
   const eCanvas=document.createElement("canvas"); eCanvas.className="mon-icon battle-icon"; eCanvas.dataset.speciesId=enemy.speciesId; eCanvas.dataset.variant=enemy.variant||"Normal"; eInner.appendChild(eCanvas);
   const eRight=document.createElement("div");
   const alreadyHave = hasCurrentVariant(enemy.speciesId,enemy.variant||"Normal");
-  const caughtPill = "<span class=\\"caught-pill "+(alreadyHave?"owned":"\\")+\\">"+(alreadyHave?"Already caught":"New variant")+"</span>";
+  const caughtPill = "<span class=\"caught-pill "+(alreadyHave?"owned":"")+"\">"+(alreadyHave?"Already caught":"New variant")+"</span>";
   eRight.innerHTML="<h3>"+getMonDisplayName(enemy)+" "+((enemy.variant&&enemy.variant!=="Normal")?("<span class='variant-badge'>"+enemy.variant+"</span>"):"")+(enemySpecies.isLegendary?"<span class='legendary-tag'>Legendary</span>":"")+"</h3><div>Lv "+enemy.level+" ("+enemySpecies.type+")</div><div>"+caughtPill+"</div>";
   const eHp=document.createElement("div"); eHp.className="hp-bar";
   const eHpInner=document.createElement("div"); eHpInner.className="hp-bar-inner";
@@ -1110,9 +1118,58 @@ function attemptRun(){
   if(Math.random()<0.75){ logMessage("You successfully ran away."); endBattle(false); } else { logMessage("Couldn't escape!"); enemyTurn(); }
 }
 function endBattle(playerWon,grantExp=true){
-  gameState.player.party.forEach(function(m){ m.hp=getMaxHP(m); });
-  battle.active=false; battle.wild=null; battle.trainerTeam=[]; battle.participants=[];
-  renderBattle(); renderStatus(); renderParty(); refreshIcons(); renderTrain(); saveGame();
+  // Give rewards only if you actually won by KO (not catching or running).
+  if (playerWon && grantExp) {
+    try {
+      const p   = gameState.player;
+      const inv = gameState.inventory;
+      const enemy = battle.isTrainer ? battle.trainerTeam[battle.trainerIndex] : battle.wild;
+
+      if (enemy) {
+        const level = enemy.level || 1;
+
+        // Coins: trainer fights pay more than wild fights.
+        let coinGain = battle.isTrainer
+          ? (20 + level * 6)   // trainers
+          : (5  + level * 3);  // wild
+
+        if (enemy.isLegendary) coinGain *= 2;
+
+        coinGain = Math.max(1, Math.round(coinGain));
+        p.money += coinGain;
+        logMessage("You earned " + coinGain + " coins for winning the battle.");
+
+        // Simple item drops
+        const roll = Math.random();
+        if (roll < 0.15) {
+          inv.potion++;
+          logMessage("You found a Potion after the battle.");
+        } else if (roll < 0.22) {
+          inv.orbBasic++;
+          logMessage("You found a Basic Orb after the battle.");
+        } else if (roll < 0.25) {
+          inv.xpChip++;
+          logMessage("You received an XP Chip as a bonus reward!");
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Heal party and clean up battle state
+  gameState.player.party.forEach(function(m){ m.hp = getMaxHP(m); });
+  battle.active     = false;
+  battle.wild       = null;
+  battle.trainerTeam = [];
+  battle.participants = [];
+
+  renderBattle();
+  renderStatus();
+  renderParty();
+  refreshIcons();
+  renderTrain();
+  saveGame();
 }
 
 function exploreWild(){
